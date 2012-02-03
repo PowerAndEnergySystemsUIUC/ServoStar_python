@@ -126,35 +126,7 @@ def sendReadCommand(l,ser,command):
 			printStdOut(l,"Serial connection not open.")
 	except AttributeError:
 		printStdOut(l,"Serial connection never opened.")
-	return False
-
-def getTwoByteNum(l,ser):
-	b = ser.read()
-	val = int(ord(b)) << 8
-	b = ser.read()
-	val = int(ord(b)) + val
-	b = ser.read()
-	if b != chr(0x0D):
-		printStdOut(l,"Did not receive carriage return.")
-		return False
-	else:
-		return float(val)
-		
-def sendTwoByteNum(l,ser,payload):
-	try:
-		byteOne = chr(int(payload/256))
-		byteTwo = chr(int(payload % 256))
-		ser.write(byteOne)
-		ser.write(byteTwo)
-		#printStdOut(l,"Payload sent successfully. Byte one: " + str(ord(byteOne)) + "; Byte two: " + str(ord(byteTwo)))
-	except ValueError:
-		printStdOut(l,"Could not send data, value of payload out of range.")
-
-def sendOneChar(l,ser,payload):
-	try:
-		ser.write(payload)
-	except ValueError:
-		printStdOut(l,"Could not send data, value of payload out of range.")	
+	return False	
 
 def checkActive(l,ser):
 	rsp = sendReadCommand(l,ser,'active')
