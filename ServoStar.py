@@ -88,7 +88,7 @@ def sendCommand(ser,command,l):
 		printStdOut "Serial connection never opened."
 	return False
 
-def verifyCommand(l,ser):
+def verifyCommand(ser,l):
     """ 
         Verify serial command to dyno.
         
