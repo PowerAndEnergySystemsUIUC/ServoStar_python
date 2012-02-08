@@ -44,7 +44,7 @@ cutOutSpeed = 1350
 global torqueLimit
 torqueLimit = 6
 
-def sendCommand(l,ser,command):
+def sendCommand(ser,command,l):
     """ 
         Send serial command to dyno.
         
