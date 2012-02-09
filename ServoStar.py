@@ -287,9 +287,6 @@ def changeTorque(f, ser, t, v, msg = "", l):
 		if setTorque(ser,t,l) == True:
 			# Print speed and torque command to stdout.
 			printStdOut("Speed: %i rpm; Te: %0.2f Nm; Tm: %0.2f Nm" % (v,t,t-round(computeLossTorque(v),2)),True,l)
-			# Log torque command and velocity.
-			# Parameters: lock, file, torque, velocity.
-			logTorqueVelocity(f,t,v,msg,l)
 			return True
 		else:
 			printStdOut("There was an error changing the torque.",l)
@@ -510,7 +507,6 @@ def checkSpeed(f,ser,va,t,l):
 		killSystem(ser,l)
 	else:
 		va.value = int(v)
-		logTorqueVelocity(f,t,v,l)
 		return v
 
 def setupDynoSerial(port = None, baud = None, l):
