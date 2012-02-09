@@ -29,28 +29,29 @@ global crLast
 crLast = False
 global dynoMode
 dynoMode = -1
-global currentScalingFactor
-currentScalingFactor = 50 # drive command/amps
-global torqueConstant
-torqueConstant = 1.3975964 # Amps/Nm
-global constantCoefficent
-constantCoefficient = 0.1262042969
-global linearCoefficient
-linearCoefficient = 0.0000535541
-global quadraticCoefficient
-quadraticCoefficient = -0.0000000074
-global cutOutSpeed
-cutOutSpeed = 1350
+global CURRENT_SCALING_FACTOR
+CURRENT_SCALING_FACTOR = 50 # drive command/amps
+global TORQUE_CONSTANT
+TORQUE_CONSTANT = 1.3975964 # Amps/Nm
+global CONSTANT_COEFFICIENT
+CONSTANT_COEFFICIENT = 0.1262042969
+global LINEAR_COEFFICIENT
+LINEAR_COEFFICIENT = 0.0000535541
+global QUADRATIC_COEFFICIENT
+QUADRATIC_COEFFICIENT = -0.0000000074
+global CUT_OUT_SPEED
+CUT_OUT_SPEED = 1350
 global torqueLimit
 torqueLimit = 6
 
 def sendCommand(ser,command,l):
     """ 
-        Send serial command to dyno.
+        Send serial command byte by byte to dyno.
         
         Arguments:
         ser -- the serial port object to use
         command -- a string containing the command to be sent
+        l -- 
         
         Returns:
         True -- everything worked
@@ -94,11 +95,12 @@ def verifyCommand(ser,l):
         
         Arguments:
         ser -- the serial port object to use
+        l --
         
         Returns:
         True -- everything worked
-        False -- serial connection never opened
-        int(val) -- err number if an error occurred
+        False -- serial connection not available or unexpected character read
+        val -- err integer number returned by dyno if an error occurred
         
     """
 	try:
@@ -146,6 +148,7 @@ def sendReadCommand(ser,command,l):
         Arguments:
         ser -- the serial port object to use
         command -- a string containing the command to be sent
+        l --
         
         Returns:
         False -- serial connection never opened
@@ -203,9 +206,9 @@ def getCurrent(ser,l):
 	return sendReadCommand(ser,'i',l)
 
 def getTorque(ser,l):
-	global currentScalingFactor
-	global torqueConstant
-	return float(getCurrent(ser,l))/(currentScalingFactor*torqueConstant)
+	global CURRENT_SCALING_FACTOR
+	global TORQUE_CONSTANT
+	return float(getCurrent(ser,l))/(CURRENT_SCALING_FACTOR*TORQUE_CONSTANT)
 
 def enableDrive(ser,l):
 	rsp = sendWriteCommand(ser,'en',l)
@@ -256,13 +259,13 @@ def setVelocity(ser,velocity,l):
 	return False
 
 def setTorque(ser,torque,l):
-	global currentScalingFactor
-	global torqueConstant
+	global CURRENT_SCALING_FACTOR
+	global TORQUE_CONSTANT
 	if dynoMode == 2:
 		try:
 			if(float(torque) >= 0 or float(torque) <= 6):
 				# Convert to current as the drive torque command is actually a current command.
-				i = str(int(round(float(torque)*currentScalingFactor*torqueConstant,0)))
+				i = str(int(round(float(torque)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT,0)))
 				rsp = sendWriteCommand(ser,'t=' + i,l)
 				if(rsp == True):
 					return True
@@ -295,14 +298,14 @@ def changeTorque(f, ser, t, v, msg = "", l):
 	return False
 
 def computeLossTorque(v):
-	global torqueConstant
-	return computeLossCurrent(v)/torqueConstant;
+	global TORQUE_CONSTANT
+	return computeLossCurrent(v)/TORQUE_CONSTANT;
 
 def computeLossCurrent(v):
-	global constantCoefficent
-	global linearCoefficient
-	global quadraticCoefficient
-	return constantCoefficient + v*linearCoefficient + math.pow(v,2)*quadraticCoefficient
+	global CONSTANT_COEFFICIENT
+	global LINEAR_COEFFICIENT
+	global QUADRATIC_COEFFICIENT
+	return CONSTANT_COEFFICIENT + v*LINEAR_COEFFICIENT + math.pow(v,2)*QUADRATIC_COEFFICIENT
 
 def setCurrentLimit(ser,limit,l):
 	rsp = sendWriteCommand(ser,'ilim=' + str(limit),l)
@@ -312,7 +315,7 @@ def setCurrentLimit(ser,limit,l):
 	return rsp
 
 def setTorqueLimit(ser,limit,l):
-	rsp = sendWriteCommand(ser,'ilim=' + str(int(round(float(limit)*currentScalingFactor*torqueConstant))),l)
+	rsp = sendWriteCommand(ser,'ilim=' + str(int(round(float(limit)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT))),l)
 	if(rsp == True):
 		printStdOut("Torque limit successfully set.",l)
 		return True
@@ -502,8 +505,8 @@ def testTorqueMode(ser, t = None,l):
 
 def checkSpeed(f,ser,va,t,l):
 	v = float(getVelocity(ser,l))
-	if v > cutOutSpeed:
-		printStdOut("Speed of " + str(v) + " rpm exceeds cut out speed of " + str(cutOutSpeed) + " rpm.  Killing system.",l)
+	if v > CUT_OUT_SPEED:
+		printStdOut("Speed of " + str(v) + " rpm exceeds cut out speed of " + str(CUT_OUT_SPEED) + " rpm.  Killing system.",l)
 		killSystem(ser,l)
 	else:
 		va.value = int(v)
