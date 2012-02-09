@@ -350,7 +350,7 @@ def scanSerial():
 		try:
 			val = winreg.EnumValue(key, i)
 			portName = str(val[1])
-			print str(int(portName[-1])-1) + ": " + portName
+			printStdOut(str(int(portName[-1])-1) + ": " + portName,l)
 		except EnvironmentError:
 			break
 	return i-1
