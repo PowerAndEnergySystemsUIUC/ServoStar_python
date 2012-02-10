@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.1.1 -- February 07, 2012
+    ServoStar_python  v0.1.5 -- February 10, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 	
@@ -319,7 +319,11 @@ def setTorqueLimit(ser,limit,l):
 	printStdOut("There was an error setting the torque limit.",l)
 	return rsp
 
-def openSerial(port,baud,l):
+def openSerial(port = None, baud = None,l):
+    if port == None:
+        port = promptForPort(l)
+    if baud == None:
+        baud = promptForBaud(l)
 	printStdOut("Connecting...",l)
 	ser = serial.Serial(int(port),long(baud),timeout=5)
 	if (ser.isOpen()):
@@ -371,10 +375,6 @@ def promptForPort(l):
 def promptForBaud(device,l):
 	if device == "dyno":
 		availableBaud = ['9600','19200']
-	elif device == "arduino":
-		availableBaud = ['9600','19200','28800','38400','57600','115200']
-	else:
-		availableBaud = ['9600']
 	printStdOut "Baud rates available:"
 	for baud in availableBaud:
 		printStdOut baud
@@ -382,7 +382,7 @@ def promptForBaud(device,l):
 	if baud == "q":
 		sys.exit()
 	elif not baud in availableBaud:
-		printStdOut("Inavlid baud rate.  Try again (or enter q to quit).",l)
+		printStdOut("Inavlid baud rate. Try again (or enter q to quit).",l)
 		return promptForBaud()
 	else:
 		return baud
@@ -513,18 +513,11 @@ def setupDynoSerial(port = None, baud = None, l):
 	# Check if parameters for serial port and baud rate have been passed in.
 	if port == None or baud == None:
 		# Missing port or baud so ask for them.
-		printStdOut("Attempting to setup the dynamometer.",l)
-		q = raw_input("Shall I attempt to connect to the drive using default settings? (y/n): ")
-		if port == None:
-			if q == 'y':
+		q = raw_input("Port and/or baud rate not provided. Shall I use the default settings? (y/n): ")
+		if port == None and q == 'y':
 				port = 0
-			else:
-				port = promptForPort()
-		if baud == None:
-			if q == 'y':
+		if baud == None and q == 'y':
 				baud = 9600
-			else:
-				baud = promptForBaud("dyno",l)
 	printStdOut("Attempting to setup the dynamometer.",l)
 	# Attempt to open a serial connection to the dyno.
 	return openSerial(port,baud,l)
