@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.1.5 -- February 10, 2012
+    ServoStar_python  v0.1.6 -- February 10, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 	
@@ -242,7 +242,7 @@ def setOpmode(ser,mode,l = None):
 def setVelocity(ser,velocity,l = None):
 	if dynoMode == 1:
 		try:
-			if (float(velocity) >= 0 or float(velocity) <= 1300):
+			if (float(velocity) >= 0 and float(velocity) <= 1300):
 				rsp = sendWriteCommand(ser,'v=' + str(velocity),l)
 				if(rsp == True):
 					printStdOut("Velocity command sent successfully.",l)
@@ -263,7 +263,7 @@ def setTorque(ser,torque,l = None):
 	global TORQUE_CONSTANT
 	if dynoMode == 2:
 		try:
-			if(float(torque) >= 0 or float(torque) <= 6):
+			if(float(torque) >= 0 and float(torque) <= 6):
 				# Convert to current as the drive torque command is actually a current command.
 				i = str(int(round(float(torque)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT,0)))
 				rsp = sendWriteCommand(ser,'t=' + i,l)
@@ -387,7 +387,7 @@ def promptForBaud(device,l = None):
 	else:
 		return baud
 
-def killSystem(dyno = None, arduino = None, exit = True,l = None):
+def killSystem(dyno = None,l = None,exit = True):
 	if dyno != None and dyno.isOpen():
 		# Attempt to disable drive until successful.
 		try:
@@ -396,22 +396,25 @@ def killSystem(dyno = None, arduino = None, exit = True,l = None):
 		except KeyboardInterrupt:
 			sys.exit()
 		closeSerial(dyno,l)
-	if arduino != None:
-		closeSerial(arduino,l)
 	if exit == True:
 		sys.exit()
 
-def enableDyno(ser, mode = -1, torqueLimit = 6, testTorque = True,l = None):
+def enableDyno(ser, mode = -1, torqueLimit = 6, testTorque = True, testVelocity = True, l = None):
 	global dynoMode
 	# Ask for mode if none is given.
 	if mode == -1:
-		l.acquire()
+        if l != None:
+            l.acquire()
 		mode = raw_input("Which mode should the dyno be placed in (1) velocity mode or (2) torque mode? ")
-		l.release()
+        if l != None:
+            l.release()
 		mode = int(mode)
 	if mode == 1:
         # Attempt to enable velocity mode.
-		return enableVelocityMode(ser,l)
+        rsp = enableVelocityMode(ser,testVelocity,l)
+        if rsp == True:
+            dynoMode = 1
+		return rsp
 	elif mode == 2:
 		# Attempt to enable torque mode.
 		rsp = enableTorqueMode(ser,torqueLimit,testTorque,l)
@@ -421,16 +424,16 @@ def enableDyno(ser, mode = -1, torqueLimit = 6, testTorque = True,l = None):
 		elif rsp == 5:
 			# A response code of 5 can usually be fixed by trying again.
 			time.sleep(0.1)
-			return enableDyno(ser,mode,torqueLimit,testTorque,l)
+			return enableDyno(ser,mode,torqueLimit,testTorque,testVelocity,l)
 		elif rsp == 23:
 			disableDrive(ser,l)
-			return enableDyno(ser,mode,torqueLimit,testTorque,l)
+			return enableDyno(ser,mode,torqueLimit,testTorque,testVelocity,l)
 		return rsp
 	else:
 		printStdOut("Inavlid mode.",l)
 	return False
 
-def enableVelocityMode(ser,l = None):
+def enableVelocityMode(ser, testVelocity = True, l = None):
 	rsp = disableDrive(ser,l)
 	if(rsp == True):
 		time.sleep(0.1)
@@ -439,24 +442,20 @@ def enableVelocityMode(ser,l = None):
 			time.sleep(0.1)
 			rsp = enableDrive(ser,l)
 			if(rsp == True):
-				# Change global variable storing dyno mode to 1 (velocity mode).
-				global dynoMode
-				dynoMode = 1
-				testVelocityMode = raw_input("Dynamometer set to velocity mode.  Shall I test the drive? (y/n) ")
-				if testVelocityMode == "y":
-					testVelocity = raw_input("What velocity would you like to use for the test? ")
-					if(float(testVelocity) > 1000):
-						printStdOut("That seems a little high for a simple test. I recommend using a velocity at or below 1000 rpm.",l)
-						testVelocity = raw_input("Enter a new velocity to test: ")
-					if(setVelocity(ser,testVelocity,l)):
-						printStdOut("Spinning the drive at the test velocity for 10 seconds...",l)
-						time.sleep(10)
-						if(setVelocity(ser,0,l)):
-							printStdOut("Test completed successfully.",l)
-				printStdOut("The drive should be ready to accept velocity commands.",l)
-				return True
+				active = checkActive(ser,l)
+				time.sleep(0.1)
+				driveok = driveOk(ser,l)
+				if active == True and driveok == True:
+					printStdOut("The drive should be ready to accept velocity commands.",l)
+					if testVelocity == True:
+						q = raw_input("Shall I test the drive? (y/n) ")
+						if q == 'y':
+							testVelocityMode(ser,None,l)
+					return True
+				else:
+					rsp = "Active response: " + str(active) + "; Driveok response: " + str(driveok)
 	printStdOut("There was an error enabling velocity mode.",l)
-	return False
+	return rsp
 
 def enableTorqueMode(ser, torqueLimit = None, testTorque = True,l = None):
 	rsp = disableDrive(ser,l)
@@ -469,7 +468,7 @@ def enableTorqueMode(ser, torqueLimit = None, testTorque = True,l = None):
 			if(rsp == True):
 				if(torqueLimit != None):
 					time.sleep(0.1)
-					if(setTorqueLimit(ser,torqueLimit) == True,l):
+					if(setTorqueLimit(ser,torqueLimit == True,l)):
 						printStdOut("The torque limit has been set.",l)
 				active = checkActive(ser,l)
 				time.sleep(0.1)
@@ -479,7 +478,7 @@ def enableTorqueMode(ser, torqueLimit = None, testTorque = True,l = None):
 					if testTorque == True:
 						q = raw_input("Shall I test the drive? (y/n) ")
 						if q == 'y':
-							testTorqueMode(ser,l)
+							testTorqueMode(ser,None,l)
 					return True
 				else:
 					rsp = "Active response: " + str(active) + "; Driveok response: " + str(driveok)
@@ -492,12 +491,26 @@ def testTorqueMode(ser, t = None,l = None):
 		t = float(t)
 	if t > 1:
 		printStdOut("That seems a little high for a simple test. I recommend using a torque at or below 1 Nm.",l)
-		testTorqueMode(ser,l)
+		testTorqueMode(ser,None,l)
 	rsp = setTorque(ser,t,l)
 	if rsp == True:
 		printStdOut("Applying test torque for 10 seconds...",l)
 		time.sleep(10)
 		if(setTorque(ser,0,l) == True):
+			printStdOut("Test completed successfully.",l)
+
+def testVelocityMode(ser, v = None,l = None):
+	if v == None:
+		v = raw_input(" What velocity would you like to apply for the test? ")
+		v = float(v)
+	if v > 1000:
+		printStdOut("That seems a little high for a simple test. I recommend using a velocity at or below 1000 rpm.",l)
+		testVelocityMode(ser,None,l)
+	rsp = setVelocity(ser,v,l)
+	if rsp == True:
+		printStdOut("Applying test velocity for 10 seconds...",l)
+		time.sleep(10)
+		if(setVelocity(ser,0,l) == True):
 			printStdOut("Test completed successfully.",l)
 
 def checkSpeed(f,ser,va,t,l = None):
@@ -548,7 +561,7 @@ def startDyno(f, ser, va, initialTorque = None, vref = None, initialDelay = None
 					killSystem(ser,l)
 	else:
 		printStdOut("Please choose a speed below 1300 rpm.",l)
-		startDyno(ser,l)
+		startDyno(f,ser,va,initialTorque,vref,initialDelay,l)
 
 def printStdOut(msg, cr = False, l = None):
 	global crLast
