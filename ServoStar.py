@@ -44,7 +44,7 @@ CUT_OUT_SPEED = 1350
 global torqueLimit
 torqueLimit = 6
 
-def sendCommand(ser,command,l):
+def sendCommand(ser,command,l = None):
     """ 
         Send serial command byte by byte to dyno.
         
@@ -89,7 +89,7 @@ def sendCommand(ser,command,l):
 		printStdOut("Serial connection never opened.",l)
 	return False
 
-def verifyCommand(ser,l):
+def verifyCommand(ser,l = None):
     """ 
         Verify serial command to dyno.
         
@@ -137,11 +137,11 @@ def verifyCommand(ser,l):
 	printStdOut("Serial connection never opened.",l)
 	return False
 
-def sendWriteCommand(ser,command,l):
+def sendWriteCommand(ser,command,l = None):
 	if(sendCommand(ser,command,l)):
 		return verifyCommand(ser,l)
 
-def sendReadCommand(ser,command,l):
+def sendReadCommand(ser,command,l = None):
     """ 
         Send read command to dyno.
         
@@ -181,36 +181,36 @@ def sendReadCommand(ser,command,l):
 		printStdOut("Serial connection never opened.",l)
 	return False	
 
-def checkActive(ser,l):
+def checkActive(ser,l = None):
 	rsp = sendReadCommand(ser,'active',l)
 	if(int(rsp) == 1):
 		return True
 	return rsp
 
-def driveOk(ser,l):
+def driveOk(ser,l = None):
 	rsp = sendReadCommand(ser,'driveok',l)
 	if(int(rsp) == 1):
 		return True
 	return rsp
 
-def driveReady(ser,l):
+def driveReady(ser,l = None):
 	rsp = sendReadCommand(ser,'ready',l)
 	if(int(rsp) == 1):
 		return True
 	return rsp
 
-def getVelocity(ser,l):
+def getVelocity(ser,l = None):
 	return int(sendReadCommand(ser,'v',l))
 
-def getCurrent(ser,l):
+def getCurrent(ser,l = None):
 	return sendReadCommand(ser,'i',l)
 
-def getTorque(ser,l):
+def getTorque(ser,l = None):
 	global CURRENT_SCALING_FACTOR
 	global TORQUE_CONSTANT
 	return float(getCurrent(ser,l))/(CURRENT_SCALING_FACTOR*TORQUE_CONSTANT)
 
-def enableDrive(ser,l):
+def enableDrive(ser,l = None):
 	rsp = sendWriteCommand(ser,'en',l)
 	if(rsp == True):
 		printStdOut("Drive enabled successfully.",l)
@@ -218,7 +218,7 @@ def enableDrive(ser,l):
 	printStdOut("There was an error enabling the drive.",l)
 	return rsp
 
-def disableDrive(ser,l):
+def disableDrive(ser,l = None):
 	rsp = sendWriteCommand(ser,'dis',l)
 	if(rsp == True):
 		printStdOut("Drive disabled succesfully.",l)
@@ -226,7 +226,7 @@ def disableDrive(ser,l):
 	printStdOut("There was an error disabling the drive.",l)
 	return rsp
 
-def setOpmode(ser,mode,l):
+def setOpmode(ser,mode,l = None):
 	if(mode == 1 or mode == 2):
 		rsp = sendWriteCommand(ser,'opmode=' + str(mode),l)
 		if(rsp == True):
@@ -239,7 +239,7 @@ def setOpmode(ser,mode,l):
 		printStdOut("Valid opmodes are 1 or 2.",l)
 	return False
 
-def setVelocity(ser,velocity,l):
+def setVelocity(ser,velocity,l = None):
 	if dynoMode == 1:
 		try:
 			if (float(velocity) >= 0 or float(velocity) <= 1300):
@@ -258,7 +258,7 @@ def setVelocity(ser,velocity,l):
         printStdOut("Dynamometer is in an unknown mode.",l)
 	return False
 
-def setTorque(ser,torque,l):
+def setTorque(ser,torque,l = None):
 	global CURRENT_SCALING_FACTOR
 	global TORQUE_CONSTANT
 	if dynoMode == 2:
@@ -280,7 +280,7 @@ def setTorque(ser,torque,l):
 		printStdOut("Dynamometer is in an unknown mode.",l)
 	return False
 
-def changeTorque(f, ser, t, v, msg = "", l):
+def changeTorque(f, ser, t, v, msg = "", l = None):
 	global torqueLimit
 	if t > 0:
 		# Attempt to change torque command.
@@ -304,14 +304,14 @@ def computeLossCurrent(v):
 	global QUADRATIC_COEFFICIENT
 	return CONSTANT_COEFFICIENT + v*LINEAR_COEFFICIENT + math.pow(v,2)*QUADRATIC_COEFFICIENT
 
-def setCurrentLimit(ser,limit,l):
+def setCurrentLimit(ser,limit,l = None):
 	rsp = sendWriteCommand(ser,'ilim=' + str(limit),l)
 	if(rsp == True):
 		printStdOut("Current limit successfully set.",l)
 	printStdOut("There was an error setting the current limit.",l)
 	return rsp
 
-def setTorqueLimit(ser,limit,l):
+def setTorqueLimit(ser,limit,l = None):
 	rsp = sendWriteCommand(ser,'ilim=' + str(int(round(float(limit)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT))),l)
 	if(rsp == True):
 		printStdOut("Torque limit successfully set.",l)
@@ -319,7 +319,7 @@ def setTorqueLimit(ser,limit,l):
 	printStdOut("There was an error setting the torque limit.",l)
 	return rsp
 
-def openSerial(port = None, baud = None,l):
+def openSerial(port = None, baud = None,l = None):
     if port == None:
         port = promptForPort(l)
     if baud == None:
@@ -334,7 +334,7 @@ def openSerial(port = None, baud = None,l):
 		printStdOut("Unable to open serial port.",l) 
 	return False
 
-def closeSerial(ser,l):
+def closeSerial(ser,l = None):
 	printStdOut("Attempting to disconnect serial connection...",l) 
 	try:
 		ser.close()
@@ -359,7 +359,7 @@ def scanSerial():
 			break
 	return i-1
 
-def promptForPort(l):
+def promptForPort(l = None):
 	printStdOut "Serial ports available:"
 	numPorts = scanSerial()
 	port = raw_input("Select a serial port number: ")
@@ -372,12 +372,12 @@ def promptForPort(l):
 		port = port.strip()
 		return port
 
-def promptForBaud(device,l):
+def promptForBaud(device,l = None):
 	if device == "dyno":
 		availableBaud = ['9600','19200']
-	printStdOut "Baud rates available:"
+	printStdOut("Baud rates available:")
 	for baud in availableBaud:
-		printStdOut baud
+		printStdOut(baud)
 	baud = raw_input("Select a baud rate: ")
 	if baud == "q":
 		sys.exit()
@@ -387,7 +387,7 @@ def promptForBaud(device,l):
 	else:
 		return baud
 
-def killSystem(dyno = None, arduino = None, exit = True,l):
+def killSystem(dyno = None, arduino = None, exit = True,l = None):
 	if dyno != None and dyno.isOpen():
 		# Attempt to disable drive until successful.
 		try:
@@ -401,7 +401,7 @@ def killSystem(dyno = None, arduino = None, exit = True,l):
 	if exit == True:
 		sys.exit()
 
-def enableDyno(ser, mode = -1, torqueLimit = 6, testTorque = True,l):
+def enableDyno(ser, mode = -1, torqueLimit = 6, testTorque = True,l = None):
 	global dynoMode
 	# Ask for mode if none is given.
 	if mode == -1:
@@ -430,7 +430,7 @@ def enableDyno(ser, mode = -1, torqueLimit = 6, testTorque = True,l):
 		printStdOut("Inavlid mode.",l)
 	return False
 
-def enableVelocityMode(ser,l):
+def enableVelocityMode(ser,l = None):
 	rsp = disableDrive(ser,l)
 	if(rsp == True):
 		time.sleep(0.1)
@@ -458,7 +458,7 @@ def enableVelocityMode(ser,l):
 	printStdOut("There was an error enabling velocity mode.",l)
 	return False
 
-def enableTorqueMode(ser, torqueLimit = None, testTorque = True,l):
+def enableTorqueMode(ser, torqueLimit = None, testTorque = True,l = None):
 	rsp = disableDrive(ser,l)
 	if(rsp == True):
 		time.sleep(0.1)
@@ -486,7 +486,7 @@ def enableTorqueMode(ser, torqueLimit = None, testTorque = True,l):
 	printStdOut("There was an error enabling torque mode.",l)
 	return rsp
 
-def testTorqueMode(ser, t = None,l):
+def testTorqueMode(ser, t = None,l = None):
 	if t == None:
 		t = raw_input(" What torque would you like to apply for the test? ")
 		t = float(t)
@@ -500,7 +500,7 @@ def testTorqueMode(ser, t = None,l):
 		if(setTorque(ser,0,l) == True):
 			printStdOut("Test completed successfully.",l)
 
-def checkSpeed(f,ser,va,t,l):
+def checkSpeed(f,ser,va,t,l = None):
 	v = float(getVelocity(ser,l))
 	if v > CUT_OUT_SPEED:
 		printStdOut("Speed of " + str(v) + " rpm exceeds cut out speed of " + str(CUT_OUT_SPEED) + " rpm.  Killing system.",l)
@@ -509,7 +509,7 @@ def checkSpeed(f,ser,va,t,l):
 		va.value = int(v)
 		return v
 
-def setupDynoSerial(port = None, baud = None, l):
+def setupDynoSerial(port = None, baud = None, l = None):
 	# Check if parameters for serial port and baud rate have been passed in.
 	if port == None or baud == None:
 		# Missing port or baud so ask for them.
@@ -522,7 +522,7 @@ def setupDynoSerial(port = None, baud = None, l):
 	# Attempt to open a serial connection to the dyno.
 	return openSerial(port,baud,l)
 
-def startDyno(f, ser, va, initialTorque = None, vref = None, initialDelay = None, l):
+def startDyno(f, ser, va, initialTorque = None, vref = None, initialDelay = None, l = None):
 	if vref == None:
 		vref = 1000
     #initialSpeed = int(raw_input("What velocity in rpm would like to use? "))
@@ -550,9 +550,10 @@ def startDyno(f, ser, va, initialTorque = None, vref = None, initialDelay = None
 		printStdOut("Please choose a speed below 1300 rpm.",l)
 		startDyno(ser,l)
 
-def printStdOut(msg, cr = False, l):
+def printStdOut(msg, cr = False, l = None):
 	global crLast
-	l.acquire()
+    if l != None:
+        l.acquire()
 	if crLast == True and cr == False:
 		crLast = False
 		sys.stdout.write("\n")
@@ -562,4 +563,5 @@ def printStdOut(msg, cr = False, l):
 	sys.stdout.write(msg)
 	if cr == False:
 		sys.stdout.write("\n")
-	l.release()
+    if l != None:
+        l.release()
