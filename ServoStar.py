@@ -94,8 +94,8 @@ def verifyCommand(ser,l = None):
         Verify serial command to dyno.
         
         Arguments:
-        ser -- the serial port object to use
-        l --
+        ser -- (required) the serial port object to use
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
         
         Returns:
         True -- everything worked
@@ -138,20 +138,34 @@ def verifyCommand(ser,l = None):
 	return False
 
 def sendWriteCommand(ser,command,l = None):
+    """ 
+        Call verifyCommand function if a serial command was sent successfully to dyno.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        command -- (required) a string containing the command to be sent
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        False -- call to sendCommand was unsuccessful
+        result of verifyCommand otherwise
+        
+    """
 	if(sendCommand(ser,command,l)):
 		return verifyCommand(ser,l)
+    return False
 
 def sendReadCommand(ser,command,l = None):
     """ 
         Send read command to dyno.
         
         Arguments:
-        ser -- the serial port object to use
-        command -- a string containing the command to be sent
-        l --
+        ser -- (required) the serial port object to use
+        command -- (required) a string containing the command to be sent
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
         
         Returns:
-        False -- serial connection never opened
+        False -- serial connection not available or unexpected character read
         val -- the string that was read
         
     """
@@ -182,35 +196,142 @@ def sendReadCommand(ser,command,l = None):
 	return False	
 
 def checkActive(ser,l = None):
+    """ 
+        Check to see if dyno is active by calling sendReadCommand.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        command -- (required) a string containing the command to be sent
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- call to sendReadCommand was successful
+        False -- call to sendReadCommand was unsuccessful
+        rsp -- result of sendReadCommand when call returned unexpected result
+        
+    """
 	rsp = sendReadCommand(ser,'active',l)
-	if(int(rsp) == 1):
+    if(rsp == false):
+        return False
+	elif(int(rsp) == 1):
 		return True
 	return rsp
 
 def driveOk(ser,l = None):
+    """ 
+        Check to see if dyno drive is okay by calling sendReadCommand.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        command -- (required) a string containing the command to be sent
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- call to sendReadCommand was successful
+        False -- call to sendReadCommand was unsuccessful
+        rsp -- result of sendReadCommand when call returned unexpected result
+        
+    """
 	rsp = sendReadCommand(ser,'driveok',l)
-	if(int(rsp) == 1):
+    if(rsp == false):
+        return False
+	elif(int(rsp) == 1):
 		return True
 	return rsp
 
 def driveReady(ser,l = None):
+    """ 
+        Check to see if dyno drive is ready by calling sendReadCommand.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        command -- (required) a string containing the command to be sent
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- call to sendReadCommand was successful
+        False -- call to sendReadCommand was unsuccessful
+        rsp -- result of sendReadCommand when call returned unexpected result
+        
+    """
 	rsp = sendReadCommand(ser,'ready',l)
-	if(int(rsp) == 1):
+    if(rsp == false):
+        return False
+	elif(int(rsp) == 1):
 		return True
 	return rsp
 
 def getVelocity(ser,l = None):
-	return int(sendReadCommand(ser,'v',l))
+    """ 
+        Get velocity from dyno by calling sendReadCommand.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        False -- call to sendReadCommand was unsuccessful
+        rsp -- result of sendReadCommand as an integer when call was successful
+        
+    """
+    rsp = sendReadCommand(ser,'v',l)
+    if(rsp == false):
+        return False
+    return int(rsp)
 
 def getCurrent(ser,l = None):
-	return sendReadCommand(ser,'i',l)
+    """ 
+        Get current from dyno by calling sendReadCommand.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        command -- (required) a string containing the command to be sent
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        False -- call to sendReadCommand was unsuccessful
+        rsp -- result of sendReadCommand when call was successful
+        
+    """
+    rsp = sendReadCommand(ser,'i',l)
+    if(rsp == false):
+        return False
+    return rsp
 
 def getTorque(ser,l = None):
+    """ 
+        Get torque by using the current from dyno.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        command -- (required) a string containing the command to be sent
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        False -- call to getCurrent was unsuccessful
+        rsp -- calculated torque value if call to getCurrent was successful
+        
+    """
 	global CURRENT_SCALING_FACTOR
 	global TORQUE_CONSTANT
-	return float(getCurrent(ser,l))/(CURRENT_SCALING_FACTOR*TORQUE_CONSTANT)
+    rsp = getCurrent(ser,l)
+    if(rsp == false):
+        return False
+	return float(rsp)/(CURRENT_SCALING_FACTOR*TORQUE_CONSTANT)
 
 def enableDrive(ser,l = None):
+    """ 
+        Enable dyno drive by calling sendWriteCommand.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- call to sendWriteCommand was successful
+        rsp -- otherwise
+        
+    """
 	rsp = sendWriteCommand(ser,'en',l)
 	if(rsp == True):
 		printStdOut("Drive enabled successfully.",l)
@@ -219,6 +340,18 @@ def enableDrive(ser,l = None):
 	return rsp
 
 def disableDrive(ser,l = None):
+    """ 
+        Disable dyno drive by calling sendWriteCommand.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- call to sendWriteCommand was successful
+        False -- otherwise
+        
+    """
 	rsp = sendWriteCommand(ser,'dis',l)
 	if(rsp == True):
 		printStdOut("Drive disabled succesfully.",l)
@@ -227,6 +360,20 @@ def disableDrive(ser,l = None):
 	return rsp
 
 def setOpmode(ser,mode,l = None):
+    """ 
+        Set operation mode as velocity (1) or torque (2) by calling sendWriteCommand.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        mode -- (required) the operation mode to put dyno in
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- successfully changed opmode
+        False -- invalid opmode sent
+        rsp -- call to sendWriteCommand was unsuccessful
+        
+    """
 	if(mode == 1 or mode == 2):
 		rsp = sendWriteCommand(ser,'opmode=' + str(mode),l)
 		if(rsp == True):
@@ -240,6 +387,20 @@ def setOpmode(ser,mode,l = None):
 	return False
 
 def setVelocity(ser,velocity,l = None):
+    """ 
+        Set dyno velocity by calling sendWriteCommand.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        velocity -- (required) the desired velocity to be set
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- successfully set velocity
+        False -- dyno in invalid mode or invalid velocity command sent
+        rsp -- call to sendWriteCommand was unsuccessful
+        
+    """
 	if dynoMode == 1:
 		try:
 			if (float(velocity) >= 0 and float(velocity) <= 1300):
@@ -259,6 +420,20 @@ def setVelocity(ser,velocity,l = None):
 	return False
 
 def setTorque(ser,torque,l = None):
+    """ 
+        Set dyno torque by converting to current then calling sendWriteCommand.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        torque -- (required) the desired torque to be set
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- successfully set torque
+        False -- dyno in invalid mode or invalid torque command sent
+        rsp -- call to sendWriteCommand was unsuccessful
+        
+    """
 	global CURRENT_SCALING_FACTOR
 	global TORQUE_CONSTANT
 	if dynoMode == 2:
