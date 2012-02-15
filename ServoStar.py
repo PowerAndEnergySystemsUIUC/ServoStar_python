@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.1.6 -- February 10, 2012
+    ServoStar_python  v0.1.6 -- February 15, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 	
@@ -49,9 +49,9 @@ def sendCommand(ser,command,l = None):
         Send serial command byte by byte to dyno.
         
         Arguments:
-        ser -- the serial port object to use
-        command -- a string containing the command to be sent
-        l -- 
+        ser -- (required) the serial port object to use
+        command -- (required) a string containing the command to be sent
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
         
         Returns:
         True -- everything worked
