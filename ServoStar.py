@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.1.6 -- February 15, 2012
+    ServoStar_python  v0.1.7 -- March 7, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 	
@@ -419,7 +419,7 @@ def setVelocity(ser,velocity,l = None):
         printStdOut("Dynamometer is in an unknown mode.",l)
 	return False
 
-def setTorque(ser,torque,l = None):
+def setTorque(ser,torque,l = None,quiet = False):
     """ 
         Set dyno torque by converting to current then calling sendWriteCommand.
         
@@ -443,6 +443,7 @@ def setTorque(ser,torque,l = None):
 				i = str(int(round(float(torque)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT,0)))
 				rsp = sendWriteCommand(ser,'t=' + i,l)
 				if(rsp == True):
+                    printStdOut("Te: %0.2f Nm" % (t),l) if not quiet else ''
 					return True
 				else:
 					printStdOut("There was an error commanding the specified torque.",l)
@@ -455,39 +456,73 @@ def setTorque(ser,torque,l = None):
 		printStdOut("Dynamometer is in an unknown mode.",l)
 	return False
 
-def changeTorque(f, ser, t, v, msg = "", l = None):
-	global torqueLimit
-	if t > 0:
-		# Attempt to change torque command.
-		if setTorque(ser,t,l) == True:
-			# Print speed and torque command to stdout.
-			printStdOut("Speed: %i rpm; Te: %0.2f Nm; Tm: %0.2f Nm" % (v,t,t-round(computeLossTorque(v),2)),True,l)
-			return True
-		else:
-			printStdOut("There was an error changing the torque.",l)
-	else:
-		printStdOut("Negative torques cannot be applied right now.",l)
-	return False
-
 def computeLossTorque(v):
+    """
+        Convert current loss to torque loss.
+        
+        Arguments:
+        v -- (required)
+        
+        Returns:
+        modified result of computeLossCurrent
+        
+    """
 	global TORQUE_CONSTANT
 	return computeLossCurrent(v)/TORQUE_CONSTANT;
 
 def computeLossCurrent(v):
+    """
+        Calculate amount of current lost due to velocity.
+        
+        Arguments:
+        v -- (required)
+        
+        Returns:
+        lost current
+        
+    """
 	global CONSTANT_COEFFICIENT
 	global LINEAR_COEFFICIENT
 	global QUADRATIC_COEFFICIENT
 	return CONSTANT_COEFFICIENT + v*LINEAR_COEFFICIENT + math.pow(v,2)*QUADRATIC_COEFFICIENT
 
-def setCurrentLimit(ser,limit,l = None):
+def setCurrentLimit(ser,limit,quiet = true,l = None):
+    """
+        Send command to dyno to set current limit.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        limit -- (required) desired current limit
+        quiet -- (optional) optionally print to StdOut
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- current limit successfully set
+        rsp -- call to sendWriteCommand was unsuccessful
+        
+    """
 	rsp = sendWriteCommand(ser,'ilim=' + str(limit),l)
 	if(rsp == True):
-		printStdOut("Current limit successfully set.",l)
-	printStdOut("There was an error setting the current limit.",l)
+		printStdOut("Current limit successfully set.",l) if not quiet else sys.stdout.write('')
+        return True
+	printStdOut("There was an error setting the current limit.",l) if not quiet else sys.stdout.write('')
 	return rsp
 
 def setTorqueLimit(ser,limit,l = None):
-	rsp = sendWriteCommand(ser,'ilim=' + str(int(round(float(limit)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT))),l)
+    """
+        Send command to dyno to set torque limit.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        limit -- (required) desired torque limit
+        l -- lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- torque limit successfully set
+        rsp -- call to setCurrentLimit was unsuccessful
+        
+    """
+	rsp = setCurrentLimit(ser,int(round(float(limit)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT)),False,l)
 	if(rsp == True):
 		printStdOut("Torque limit successfully set.",l)
 		return True
@@ -495,6 +530,19 @@ def setTorqueLimit(ser,limit,l = None):
 	return rsp
 
 def openSerial(port = None, baud = None,l = None):
+    """
+        Open and connect to serial port.
+        
+        Arguments:
+        port -- (optional)
+        baud -- (optional)
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        ser -- the serial port object to use
+        False -- unable to open serial port
+        
+    """
     if port == None:
         port = promptForPort(l)
     if baud == None:
@@ -510,6 +558,18 @@ def openSerial(port = None, baud = None,l = None):
 	return False
 
 def closeSerial(ser,l = None):
+    """
+        Close and disconnect from serial port.
+        
+        Arguments:
+        ser -- (required) the serial port object to use
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- serial closed successfully
+        False -- unable to close serial port or serial connection never opened
+        
+    """
 	printStdOut("Attempting to disconnect serial connection...",l) 
 	try:
 		ser.close()
@@ -522,7 +582,17 @@ def closeSerial(ser,l = None):
 		printStdOut("Serial connection never opened.",l) 
 	return False
 
-def scanSerial():
+def scanSerial(l = None):
+    """
+        Scan serial
+        
+        Arguments:
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        next position to be checked
+        
+    """
 	path = 'HARDWARE\\DEVICEMAP\\SERIALCOMM'
 	key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path)
 	for i in itertools.count():
@@ -535,6 +605,17 @@ def scanSerial():
 	return i-1
 
 def promptForPort(l = None):
+    """
+        Obtain desired port to be used.
+        
+        Arguments:
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        recursively call promptForPort if invalid port selected
+        port -- the port to be used
+        
+    """
 	printStdOut "Serial ports available:"
 	numPorts = scanSerial()
 	port = raw_input("Select a serial port number: ")
@@ -547,12 +628,22 @@ def promptForPort(l = None):
 		port = port.strip()
 		return port
 
-def promptForBaud(device,l = None):
-	if device == "dyno":
-		availableBaud = ['9600','19200']
+def promptForBaud(l = None):
+    """
+        Obtain desired baud rate to be used.
+        
+        Arguments:
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        recursively call promptForBaud if invalid baud rate selected
+        baud -- the baud rate to be used
+        
+    """
+    availableBaud = ['9600','19200']
 	printStdOut("Baud rates available:")
 	for baud in availableBaud:
-		printStdOut(baud)
+		printStdOut(baud,l)
 	baud = raw_input("Select a baud rate: ")
 	if baud == "q":
 		sys.exit()
@@ -563,6 +654,15 @@ def promptForBaud(device,l = None):
 		return baud
 
 def killSystem(dyno = None,l = None,exit = True):
+    """
+        Disable dyno drive.
+        
+        Arguments:
+        dyno -- (optional) dyno object
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        exit -- (optional) option to exit system
+        
+    """
 	if dyno != None and dyno.isOpen():
 		# Attempt to disable drive until successful.
 		try:
@@ -575,6 +675,23 @@ def killSystem(dyno = None,l = None,exit = True):
 		sys.exit()
 
 def enableDyno(ser, mode = -1, torqueLimit = 6, testTorque = True, testVelocity = True, l = None):
+    """
+        Enable dyno drive in velocity or torque mode.
+        
+        Arguments:
+        ser -- (required) the serial port object to be used
+        mode -- (optional) 1 for velocity mode, 2 for torque mode, or -1 to prompt for desired mode
+        torqueLimit -- (optional) maximum torque value
+        testTorque -- (optional)
+        testVelocity -- (optional)
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        rsp -- result of trying to enable a dyno mode
+        recursivly call enableDyno if easily fixable error found
+        False -- invalid mode entered
+        
+    """
 	global dynoMode
 	# Ask for mode if none is given.
 	if mode == -1:
@@ -592,7 +709,7 @@ def enableDyno(ser, mode = -1, torqueLimit = 6, testTorque = True, testVelocity 
 		return rsp
 	elif mode == 2:
 		# Attempt to enable torque mode.
-		rsp = enableTorqueMode(ser,torqueLimit,testTorque,l)
+		rsp = enableTorqueMode(ser,torqueLimit,testTorque,l,quiet)
 		if rsp == True:
 			dynoMode = 2
 		# Look for easily fixable errors.
@@ -609,6 +726,19 @@ def enableDyno(ser, mode = -1, torqueLimit = 6, testTorque = True, testVelocity 
 	return False
 
 def enableVelocityMode(ser, testVelocity = True, l = None):
+    """
+        Enable dyno for velocity commands in velocity mode after disabling dyno drive.
+        
+        Arguments:
+        ser -- (required) the serial port object to be used
+        testVelocity -- (optional) option for testing drive for a given velocity
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- drive ready for velocity commands
+        rsp -- error enabling velocity mode
+        
+    """
 	rsp = disableDrive(ser,l)
 	if(rsp == True):
 		time.sleep(0.1)
@@ -632,7 +762,21 @@ def enableVelocityMode(ser, testVelocity = True, l = None):
 	printStdOut("There was an error enabling velocity mode.",l)
 	return rsp
 
-def enableTorqueMode(ser, torqueLimit = None, testTorque = True,l = None):
+def enableTorqueMode(ser, torqueLimit = None, testTorque = True,l = None,quiet = False):
+    """
+        Enable dyno for torque commands in torque mode after disabling dyno drive.
+        
+        Arguments:
+        ser -- (required) the serial port object to be used
+        torqueLimit -- (optional) maximum amount of torque to be used
+        testTorque -- (optional) option for testing drive for a given torque
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        True -- drive ready for torque commands
+        rsp -- error enabling torque mode
+        
+    """
 	rsp = disableDrive(ser,l)
 	if(rsp == True):
 		time.sleep(0.1)
@@ -643,7 +787,7 @@ def enableTorqueMode(ser, torqueLimit = None, testTorque = True,l = None):
 			if(rsp == True):
 				if(torqueLimit != None):
 					time.sleep(0.1)
-					if(setTorqueLimit(ser,torqueLimit == True,l)):
+					if(setTorqueLimit(ser,torqueLimit == True,l,quiet)):
 						printStdOut("The torque limit has been set.",l)
 				active = checkActive(ser,l)
 				time.sleep(0.1)
@@ -653,28 +797,46 @@ def enableTorqueMode(ser, torqueLimit = None, testTorque = True,l = None):
 					if testTorque == True:
 						q = raw_input("Shall I test the drive? (y/n) ")
 						if q == 'y':
-							testTorqueMode(ser,None,l)
+							testTorqueMode(ser,None,l,quiet)
 					return True
 				else:
 					rsp = "Active response: " + str(active) + "; Driveok response: " + str(driveok)
 	printStdOut("There was an error enabling torque mode.",l)
 	return rsp
 
-def testTorqueMode(ser, t = None,l = None):
+def testTorqueMode(ser, t = None, l = None, quiet = False):
+    """
+        Get torque and check if it is valid and does not cause the system to fail.
+        
+        Arguments:
+        ser -- (required) the serial port object to be used
+        t -- (optional) the torque to test
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+    """
 	if t == None:
 		t = raw_input(" What torque would you like to apply for the test? ")
 		t = float(t)
 	if t > 1:
 		printStdOut("That seems a little high for a simple test. I recommend using a torque at or below 1 Nm.",l)
-		testTorqueMode(ser,None,l)
-	rsp = setTorque(ser,t,l)
+		testTorqueMode(ser,None,l,quiet)
+	rsp = setTorque(ser,t,l,quiet)
 	if rsp == True:
 		printStdOut("Applying test torque for 10 seconds...",l)
 		time.sleep(10)
-		if(setTorque(ser,0,l) == True):
+		if(setTorque(ser,0,l,quiet) == True):
 			printStdOut("Test completed successfully.",l)
 
 def testVelocityMode(ser, v = None,l = None):
+    """
+        Get velocity and check if it is valid and does not cause the system to fail.
+        
+        Arguments:
+        ser -- (required) the serial port object to be used
+        v -- (optional) the velocity to test
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+    """
 	if v == None:
 		v = raw_input(" What velocity would you like to apply for the test? ")
 		v = float(v)
@@ -688,16 +850,40 @@ def testVelocityMode(ser, v = None,l = None):
 		if(setVelocity(ser,0,l) == True):
 			printStdOut("Test completed successfully.",l)
 
-def checkSpeed(f,ser,va,t,l = None):
+def checkSpeed(ser,t,l = None):
+    """
+        Check that the given velocity is valid.
+        
+        Arguments:
+        ser -- (required) the serial port object to be used
+        t -- (reqired) 
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        v -- the given, valid speed
+        killSystem if high invalid speed given
+        
+    """
 	v = float(getVelocity(ser,l))
 	if v > CUT_OUT_SPEED:
 		printStdOut("Speed of " + str(v) + " rpm exceeds cut out speed of " + str(CUT_OUT_SPEED) + " rpm.  Killing system.",l)
 		killSystem(ser,l)
 	else:
-		va.value = int(v)
 		return v
 
 def setupDynoSerial(port = None, baud = None, l = None):
+    """
+        Obtain port and baud parameters and attempt to open a serial connection to dyno.
+        
+        Arguments:
+        port -- (optional) the port number to use
+        baud -- (optional) the baud rate to use
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+        Returns:
+        call to openSerial
+        
+    """
 	# Check if parameters for serial port and baud rate have been passed in.
 	if port == None or baud == None:
 		# Missing port or baud so ask for them.
@@ -710,7 +896,18 @@ def setupDynoSerial(port = None, baud = None, l = None):
 	# Attempt to open a serial connection to the dyno.
 	return openSerial(port,baud,l)
 
-def startDyno(f, ser, va, initialTorque = None, vref = None, initialDelay = None, l = None):
+def startDyno(ser, initialTorque = None, vref = None, initialDelay = None, l = None, quiet = False):
+    """
+        Attempt to start the dyno with given velocity and torque values.
+        
+        Arguments:
+        ser -- (required) the serial port object to be used
+        initialTorque -- (optional) how much torque to initially apply
+        vref -- (optional) velocity to set dyno to in rpm
+        initialDelay -- (optional) how long to let the drive accelerate in seconds
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        
+    """
 	if vref == None:
 		vref = 1000
     #initialSpeed = int(raw_input("What velocity in rpm would like to use? "))
@@ -723,11 +920,11 @@ def startDyno(f, ser, va, initialTorque = None, vref = None, initialDelay = None
 			if initialDelay == None:
 				initialDelay = 15
 			if initialDelay > 0:
-				changeTorque(f,ser,t,0,"START",l)
+				setTorque(ser,t,l,quiet)
 				samplePeriod = 0.2
 				try:
 					for i in range(int(initialDelay/samplePeriod)):
-						v = checkSpeed(f,ser,va,t,l)
+						v = checkSpeed(ser,t,l)
 						printStdOut("Letting drive accelerate for %d seconds.  Current speed: %d rpm" % (initialDelay,v),True,l)
 						time.sleep(samplePeriod)
 					sys.stdout.write("\n")
@@ -736,9 +933,18 @@ def startDyno(f, ser, va, initialTorque = None, vref = None, initialDelay = None
 					killSystem(ser,l)
 	else:
 		printStdOut("Please choose a speed below 1300 rpm.",l)
-		startDyno(f,ser,va,initialTorque,vref,initialDelay,l)
+		startDyno(ser,initialTorque,vref,initialDelay,l,quiet)
 
-def printStdOut(msg, cr = False, l = None):
+def printStdOut(msg, l = None, cr = False):
+    """
+        Print using StdOut for option of using multiprocessing
+        
+        Arguments:
+        msg -- (required) the message to be printed
+        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+        cr -- (optional) print a carriage return after the message if True
+        
+    """
 	global crLast
     if l != None:
         l.acquire()
