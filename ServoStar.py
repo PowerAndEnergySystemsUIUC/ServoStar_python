@@ -76,12 +76,12 @@ class dyno:
         
     """
     # Variables
-    dSerial
-    mode
-    torque
-    velocity
-    ser
-    l
+#    dSerial
+#    mode
+#    torque
+#    velocity
+#    ser
+#    l
     
     
     def __init__(self, mode = -1, port = None, baud = None, torque = None, velocity = None, l = None):
@@ -114,20 +114,20 @@ class dyno:
             
         """
         # Variables
-        ser
-        port
-        baud
-        l
+#        ser
+#        port
+#        baud
+#        l
         
         # Methods
         def __init__(self, port = None, baud = None, l = None):
             self.l = l
             if(port == None):
-                self.port = promptForPort(l)
+                self.port = self.promptForPort()
             else:
                 self.port = port
             if(baud == None):
-                self.baud = promptForBaud(l)
+                self.baud = self.promptForBaud()
             else:
                 self.baud = baud
             self.ser = self.openSerial()
@@ -216,7 +216,7 @@ class dyno:
                 else:
                     printStdOut("Serial connection not open.",self.l)
             except AttributeError:
-            printStdOut("Serial connection never opened.",self.l)
+                printStdOut("Serial connection never opened.",self.l)
             return False
 
         def sendWriteCommand(self,command):
@@ -347,7 +347,7 @@ class dyno:
                 
                 """
             printStdOut("Serial ports available:",self.l)
-            numPorts = scanSerial()
+            numPorts = self.scanSerial()
             self.port = raw_input("Select a serial port number: ")
             if self.port == "q":
                 sys.exit()
@@ -629,7 +629,7 @@ class dyno:
         global QUADRATIC_COEFFICIENT
         return CONSTANT_COEFFICIENT + v*LINEAR_COEFFICIENT + math.pow(v,2)*QUADRATIC_COEFFICIENT
 
-    def setCurrentLimit(self,limit,quiet = true):
+    def setCurrentLimit(self,limit,quiet = True):
         """
             Send command to dyno to set current limit.
             
@@ -955,3 +955,5 @@ def printStdOut(msg, l = None, cr = False):
         sys.stdout.write("\n")
     if l != None:
         l.release()
+
+d = dyno()
