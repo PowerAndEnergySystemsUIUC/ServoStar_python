@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.2.1 -- March 22, 2012
+    ServoStar_python  v0.2.1 -- March 28, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
     
@@ -85,17 +85,24 @@ class dyno:
     
     
     def __init__(self, mode = -1, port = None, baud = None, torque = None, velocity = None, l = None):
-        self.l = l
-        self.dSerial = self.dynoSerial(port,baud,l)
-        self.mode = self.setOpmode(mode)
-        if(torque == None):
-            self.torque = setTorque(torque)
-        else:
-            self.torque = torque
-        if(velocity == None):
-            self.velocity = setVelocity(velocity)
-        else:
-            self.velocity = velocity
+    	self.l = l
+		self.dSerial = self.dynoSerial(port,baud,l)
+		if(self.dSerial != False):
+			self.mode = self.setOpmode(mode)
+			if(self.mode != False):
+				if(torque == None):
+					self.torque = self.setTorque(torque)
+				else:
+					self.torque = torque
+				if(velocity == None):
+					self.velocity = self.setVelocity(velocity)
+				else:
+					self.velocity = velocity
+				printStdOut("Dyno object created successfully.",self.l)
+			else:
+				printStdOut("There was an error setting the opmode",self.l)
+		else:
+			printStdOut("There was an error opening the dyno serial port",self.l)
     
     class dynoSerial:
         """
