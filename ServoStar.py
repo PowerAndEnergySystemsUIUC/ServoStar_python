@@ -169,7 +169,7 @@ class dyno:
                                 if(c != char):
                                     printStdOut("Byte received (" + str(ord(c)) + ") does not match byte sent (" + str(ord(char)) + ")",self.l)
                                     return False
-                            except ser.SerialException:
+                            except self.ser.SerialException:
                                 printStdOut("Serial exception.",self.l)
                                 return False
                         else:
