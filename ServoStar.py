@@ -2,11 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-<<<<<<< HEAD
     ServoStar_python  v0.2.4 -- March 30, 2012
-=======
-    ServoStar_python  v0.2.1 -- March 28, 2012
->>>>>>> bd77ab46f3374f761fc859f910875f11c9a46359
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
     
@@ -691,7 +687,7 @@ class dyno:
         if dyno != None and dyno.isOpen():
             # Attempt to disable drive until successful.
             try:
-                while self.disableDrive(dyno) != True:
+                while self.disableDrive() != True:
                     time.sleep(0.1)
             except KeyboardInterrupt:
                 sys.exit()
