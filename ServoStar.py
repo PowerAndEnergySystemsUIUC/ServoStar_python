@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.2.5 -- April 13, 2012
+    ServoStar_python  v0.2.5 -- April 25, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
     
@@ -82,19 +82,20 @@ class dyno:
 #    __l
     
     
-    def __init__(self, mode = -1, port = None, baud = None, torque = None, velocity = None, l = None):
+    def __init__(self, mode = -1, port = None, baud = None, initial = None, l = None):
         self.__l = l
+        self.__mode = -1
+        self.__torque = 0
+        self.__velocity = 0
         self.__dS = dynoSerial(port,baud,l)
         rsp = self.enableDyno(mode)
         if(rsp == True):
-            if(torque != None and self.__mode == 2):
-                self.__torque = self.setTorque(torque)
-            else:
-                self.__torque = torque
-            if(velocity != None and self.__mode == 1):
-                self.__velocity = self.setVelocity(velocity)
-            else:
-                self.__velocity = velocity
+            if(initial != None and self.__mode == 2):
+                printStdOut("Commanding initial torque.",self.__l)
+                self.setTorque(torque)
+            elif(initial != None and self.__mode == 1):
+                printStdOut("Commanding initial velocity.",self.__l)
+                self.setVelocity(velocity)
             printStdOut("Dyno object created successfully.")
         else:
             printStdOut("There was an error enabling the drive: " + str(rsp))
@@ -110,7 +111,7 @@ class dyno:
             
         """
         rsp = self.__dS.sendReadCommand('active')
-        if(rsp == false):
+        if(rsp == False):
             return False
         elif(int(rsp) == 1):
             return True
@@ -127,7 +128,7 @@ class dyno:
             
         """
         rsp = self.__dS.sendReadCommand('driveok')
-        if(rsp == false):
+        if(rsp == False):
             return False
         elif(int(rsp) == 1):
             return True
@@ -144,7 +145,7 @@ class dyno:
             
         """
         rsp = self.__dS.sendReadCommand('ready')
-        if(rsp == false):
+        if(rsp == False):
             return False
         elif(int(rsp) == 1):
             return True
@@ -160,7 +161,7 @@ class dyno:
             
         """
         rsp = self.__dS.sendReadCommand('v')
-        if(rsp == false):
+        if(rsp == False):
             return False
         return int(rsp)
 
@@ -174,7 +175,7 @@ class dyno:
             
         """
         rsp = self.__dS.sendReadCommand('i')
-        if(rsp == false):
+        if(rsp == False):
             return False
         return rsp
 
@@ -190,7 +191,7 @@ class dyno:
         global CURRENT_SCALING_FACTOR
         global TORQUE_CONSTANT
         rsp = self.getCurrent()
-        if(rsp == false):
+        if(rsp == False):
             return False
         return float(rsp)/(CURRENT_SCALING_FACTOR*TORQUE_CONSTANT)
 
@@ -305,7 +306,7 @@ class dyno:
                     i = str(int(round(float(torque)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT,0)))
                     rsp = self.__dS.sendWriteCommand('t=' + i)
                     if(rsp == True):
-                        printStdOut("Te: %0.2f Nm" % (t),self.__l) if not quiet else ''
+                        printStdOut("Te: %0.2f Nm" % (torque),self.__l) if not quiet else ''
                         return True
                     else:
                         printStdOut("There was an error commanding the specified torque.",self.__l)
@@ -434,26 +435,23 @@ class dyno:
         if mode == 1:
             # Attempt to enable velocity mode.
             rsp = self.enableVelocityMode()
-            if rsp == True:
-                self.__mode = 1
-            return rsp
         elif mode == 2:
             # Attempt to enable torque mode.
             rsp = self.enableTorqueMode()
-            if rsp == True:
-                self.__mode = 2
-            # Look for easily fixable errors.
-            elif rsp == 5:
-                # A response code of 5 can usually be fixed by trying again.
-                time.sleep(0.1)
-                return self.enableDyno(mode)
-            elif rsp == 23:
-                self.disableDrive()
-                return self.enableDyno(mode)
-            return rsp
         else:
             printStdOut("Inavlid mode.",self.__l)
-        return False
+            return False
+        # Look for easily fixable errors.
+        if rsp == 5:
+            # A response code of 5 can usually be fixed by trying again.
+            time.sleep(0.1)
+            return self.enableDyno(mode)
+        elif rsp == 23:
+            self.disableDrive()
+            return self.enableDyno(mode)
+        else:
+            return rsp
+        
 
     def enableVelocityMode(self):
         """
@@ -480,6 +478,7 @@ class dyno:
                     driveok = self.driveOk()
                     if active == True and driveok == True:
                         printStdOut("The drive should be ready to accept velocity commands.",self.__l)
+                        self.__mode = 1
                         return True
                     else:
                         rsp = "Active response: " + str(active) + "; Driveok response: " + str(driveok)
@@ -512,6 +511,7 @@ class dyno:
                     driveok = self.driveOk()
                     if active == True and driveok == True:
                         printStdOut("The drive should be ready to accept torque commands.",self.__l)
+                        self.__mode = 2
                         return True
                     else:
                         rsp = "Active response: " + str(active) + "; Driveok response: " + str(driveok)
@@ -546,7 +546,7 @@ class dyno:
             
             Arguments:
             v -- (optional) the velocity to test
-            
+            '/dev/Bluetooth-Modem'
         """
         if v == None:
             v = raw_input(" What velocity would you like to apply for the test? ")
@@ -628,7 +628,6 @@ class dynoSerial(serial.Serial):
         verifyCommand
         sendWriteCommand
         sendReadCommand
-        openSerial
         closeSerial
         scanSerial
         promptForPort
@@ -644,7 +643,7 @@ class dynoSerial(serial.Serial):
 			port = self.promptForPort()
 		if(baud == None):
 			baud = self.promptForBaud()
-		serial.Serial.__init__(self,port,long(baud),timeout=5)
+		serial.Serial.__init__(self,int(port),long(baud),timeout=5)
 		time.sleep(0.5)
         
     def promptForPort(self):
