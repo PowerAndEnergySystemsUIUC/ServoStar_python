@@ -56,7 +56,7 @@ class dyno:
         getTorque
         enableDrive
         disableDrive
-        setOpmode
+        __setOpmode
         setVelocity
         setTorque
         computeLossTorque
@@ -64,9 +64,9 @@ class dyno:
         setCurrentLimit
         setTorqueLimit
         killSystem
-        enableDyno
-        enableVelocityMode
-        enableTorqueMode
+        setDynoMode
+        __enableVelocityMode
+        __enableTorqueMode
         testTorqueMode
         testVelocityMode
         checkSpeed
@@ -82,24 +82,29 @@ class dyno:
 #    __l
     
     
-    def __init__(self, mode = -1, port = None, baud = None, initial = None, l = None):
+    def __init__(self, mode = -1, port = None, baud = None, initial = None, tlim = 6, vlim = 1300, l = None):
         self.__l = l
         self.__mode = -1
         self.__torque = 0
         self.__velocity = 0
+        self.__tlim = tlim
+        self.__vlim = vlim
         self.__dS = dynoSerial(port,baud,l)
-        rsp = self.enableDyno(mode)
-        if(rsp == True):
-            if(initial != None and self.__mode == 2):
-                printStdOut("Commanding initial torque.",self.__l)
-                self.setTorque(torque)
-            elif(initial != None and self.__mode == 1):
-                printStdOut("Commanding initial velocity.",self.__l)
-                self.setVelocity(velocity)
-            printStdOut("Dyno object created successfully.",self.__l)
+        if self.setTorqueLimit(tlim):
+            rsp = self.enableDyno(mode)
+            if(rsp == True):
+                if(initial != None and self.__mode == 2):
+                    printStdOut("Commanding initial torque.",self.__l)
+                    self.setTorque(torque)
+                elif(initial != None and self.__mode == 1):
+                    printStdOut("Commanding initial velocity.",self.__l)
+                    self.setVelocity(velocity)
+                printStdOut("Dyno object created successfully.",self.__l)
+            else:
+                printStdOut("There was an error enabling the drive: " + str(rsp),self.__l)
         else:
-            printStdOut("There was an error enabling the drive: " + str(rsp))
-    
+            printStdOut("Could not set torque limit, aborting drive enable",self.__l)
+
     def checkActive(self):
         """ 
             Check to see if dyno is active by calling sendReadCommand.
@@ -227,7 +232,7 @@ class dyno:
         printStdOut("There was an error disabling the drive.",self.__l)
         return rsp
 
-    def setOpmode(self,mode):
+    def __setOpmode(self,mode):
         """ 
             Set operation mode as velocity (1) or torque (2) by calling sendWriteCommand.
             
@@ -267,7 +272,7 @@ class dyno:
         """
         if self.__mode == 1:
             try:
-                if (float(velocity) >= 0 and float(velocity) <= 1300):
+                if (float(velocity) >= 0 and float(velocity) <= self.__vlim):
                     rsp = self.__dS.sendWriteCommand('v=' + str(velocity))
                     if(rsp == True):
                         printStdOut("Velocity command sent successfully.",self.__l)
@@ -276,7 +281,7 @@ class dyno:
                         printStdOut("There was an error commanding the specified velocity.",self.__l)
                         return rsp
                 else:
-                    printStdOut("Velocity must be between 0 and 1300 RPM.",self.__l)
+                    printStdOut("Velocity must be between 0 and %d RPM." % (self.__vlim),self.__l)
             except ValueError:
                 printStdOut("Invalid velocity command.",self.__l)
         else:
@@ -301,7 +306,7 @@ class dyno:
         global TORQUE_CONSTANT
         if self.__mode == 2:
             try:
-                if(float(torque) >= 0 and float(torque) <= 6):
+                if(float(torque) >= 0 and float(torque) <= self.__tlim):
                     # Convert to current as the drive torque command is actually a current command.
                     i = str(int(round(float(torque)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT,0)))
                     rsp = self.__dS.sendWriteCommand('t=' + i)
@@ -312,7 +317,7 @@ class dyno:
                         printStdOut("There was an error commanding the specified torque.",self.__l)
                         return rsp
                 else:
-                    printStdOut("Torque must be between 0 and 6 N-m.",self.__l)
+                    printStdOut("Torque must be between 0 and %0.2f N-m." % (self.__tlim),self.__l)
             except ValueError:
                 printStdOut("Invalid torque command.",self.__l)
         else:
@@ -408,7 +413,7 @@ class dyno:
         if exit == True:
             sys.exit()
 
-    def enableDyno(self, mode = -1):
+    def setDynoMode(self, mode = -1):
         """
             Enable dyno drive in velocity or torque mode.
             
@@ -434,10 +439,10 @@ class dyno:
             mode = int(inputMode)
         if mode == 1:
             # Attempt to enable velocity mode.
-            rsp = self.enableVelocityMode()
+            rsp = self.__enableVelocityMode()
         elif mode == 2:
             # Attempt to enable torque mode.
-            rsp = self.enableTorqueMode()
+            rsp = self.__enableTorqueMode()
         else:
             printStdOut("Inavlid mode.",self.__l)
             return False
@@ -445,15 +450,15 @@ class dyno:
         if rsp == 5:
             # A response code of 5 can usually be fixed by trying again.
             time.sleep(0.1)
-            return self.enableDyno(mode)
+            return self.setDynoMode(mode)
         elif rsp == 23:
             self.disableDrive()
-            return self.enableDyno(mode)
+            return self.setDynoMode(mode)
         else:
             return rsp
         
 
-    def enableVelocityMode(self):
+    def __enableVelocityMode(self):
         """
             Enable dyno for velocity commands in velocity mode after disabling dyno drive.
             
@@ -468,7 +473,7 @@ class dyno:
         rsp = self.disableDrive()
         if(rsp == True):
             time.sleep(0.1)
-            rsp = self.setOpmode(1)
+            rsp = self.__setOpmode(1)
             if(rsp == True):
                 time.sleep(0.1)
                 rsp = self.enableDrive()
@@ -485,7 +490,7 @@ class dyno:
         printStdOut("There was an error enabling velocity mode.",self.__l)
         return rsp
 
-    def enableTorqueMode(self):
+    def __enableTorqueMode(self):
         """
             Enable dyno for torque commands in torque mode after disabling dyno drive.
             
@@ -501,7 +506,7 @@ class dyno:
         rsp = self.disableDrive()
         if(rsp == True):
             time.sleep(0.1)
-            rsp = self.setOpmode(2)
+            rsp = self.__setOpmode(2)
             if(rsp == True):
                 time.sleep(0.1)
                 rsp = self.enableDrive()
