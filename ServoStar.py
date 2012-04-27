@@ -82,7 +82,7 @@ class dyno:
 #    __l
     
     
-    def __init__(self, mode = -1, port = None, baud = None, initial = None, tlim = 6, vlim = 1300, l = None):
+    def __init__(self, port = None, baud = None, mode = -1, initial = None, tlim = 6, vlim = 1300, l = None):
         self.__l = l
         self.__mode = -1
         self.__torque = 0
@@ -95,10 +95,10 @@ class dyno:
             if(rsp == True):
                 if(initial != None and self.__mode == 2):
                     printStdOut("Commanding initial torque.",self.__l)
-                    self.setTorque(torque)
-                elif(initial != None and self.__mode == 1):
+                    self.setTorque(initial)
+                elif(initial != None and self.__mode == 0):
                     printStdOut("Commanding initial velocity.",self.__l)
-                    self.setVelocity(velocity)
+                    self.setVelocity(initial)
                 printStdOut("Dyno object created successfully.",self.__l)
             else:
                 printStdOut("There was an error enabling the drive: " + str(rsp),self.__l)
@@ -234,7 +234,7 @@ class dyno:
 
     def __setOpmode(self,mode):
         """ 
-            Set operation mode as velocity (1) or torque (2) by calling sendWriteCommand.
+            Set operation mode as velocity (0) or torque (2) by calling sendWriteCommand.
             
             Arguments:
             mode -- (required) the operation mode to put dyno in
@@ -245,7 +245,7 @@ class dyno:
             rsp -- call to sendWriteCommand was unsuccessful
             
         """
-        if(mode == 1 or mode == 2):
+        if(mode == 0 or mode == 2):
             rsp = self.__dS.sendWriteCommand('opmode=' + str(mode))
             if(rsp == True):
                 printStdOut("Opmode changed successfully.",self.__l)
@@ -254,7 +254,7 @@ class dyno:
                 printStdOut,("There was an error setting the opmode.",self.__l)
                 return rsp
         elif mode != -1:
-            printStdOut("Valid opmodes are 1 or 2.",self.__l)
+            printStdOut("Valid opmodes are 0 or 2.",self.__l)
         return False
 
     def setVelocity(self,velocity):
@@ -270,10 +270,10 @@ class dyno:
             rsp -- call to sendWriteCommand was unsuccessful
             
         """
-        if self.__mode == 1:
+        if self.__mode == 0:
             try:
                 if (float(velocity) >= 0 and float(velocity) <= self.__vlim):
-                    rsp = self.__dS.sendWriteCommand('v=' + str(velocity))
+                    rsp = self.__dS.sendWriteCommand('j=' + str(velocity))
                     if(rsp == True):
                         printStdOut("Velocity command sent successfully.",self.__l)
                         return True
@@ -433,18 +433,18 @@ class dyno:
         if mode == -1:
             if self.__l != None:
                 self.__l.acquire()
-            inputMode = raw_input("Which mode should the dyno be placed in (1) velocity mode or (2) torque mode? ")
+            inputMode = raw_input("Which mode should the dyno be placed in (0) velocity mode or (2) torque mode? ")
             if self.__l != None:
                 self.__l.release()
             mode = int(inputMode)
-        if mode == 1:
+        if mode == 0:
             # Attempt to enable velocity mode.
             rsp = self.__enableVelocityMode()
         elif mode == 2:
             # Attempt to enable torque mode.
             rsp = self.__enableTorqueMode()
         else:
-            printStdOut("Inavlid mode.",self.__l)
+            printStdOut("Invalid mode.",self.__l)
             return False
         # Look for easily fixable errors.
         if rsp == 5:
@@ -473,7 +473,7 @@ class dyno:
         rsp = self.disableDrive()
         if(rsp == True):
             time.sleep(0.1)
-            rsp = self.__setOpmode(1)
+            rsp = self.__setOpmode(0)
             if(rsp == True):
                 time.sleep(0.1)
                 rsp = self.enableDrive()
@@ -483,7 +483,7 @@ class dyno:
                     driveok = self.driveOk()
                     if active == True and driveok == True:
                         printStdOut("The drive should be ready to accept velocity commands.",self.__l)
-                        self.__mode = 1
+                        self.__mode = 0
                         return True
                     else:
                         rsp = "Active response: " + str(active) + "; Driveok response: " + str(driveok)
