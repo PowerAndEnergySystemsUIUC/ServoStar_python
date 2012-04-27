@@ -91,7 +91,7 @@ class dyno:
         self.__vlim = vlim
         self.__dS = dynoSerial(port,baud,l)
         if self.setTorqueLimit(tlim):
-            rsp = self.enableDyno(mode)
+            rsp = self.setDynoMode(mode)
             if(rsp == True):
                 if(initial != None and self.__mode == 2):
                     printStdOut("Commanding initial torque.",self.__l)
@@ -425,7 +425,7 @@ class dyno:
             
             Returns:
             rsp -- result of trying to enable a dyno mode
-            recursivly call enableDyno if easily fixable error found
+            recursivly call setDynoMode if easily fixable error found
             False -- invalid mode entered
             
         """
