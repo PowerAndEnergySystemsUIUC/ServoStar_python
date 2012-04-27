@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.2.5 -- April 25, 2012
+    ServoStar_python  v0.2.7 -- April 27, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
     
@@ -18,8 +18,8 @@ import time
 from datetime import datetime
 import operator
 import itertools
-#import _winreg as winreg
-#import msvcrt
+import _winreg as winreg
+import msvcrt
 import os
 import math
 
@@ -96,7 +96,7 @@ class dyno:
             elif(initial != None and self.__mode == 1):
                 printStdOut("Commanding initial velocity.",self.__l)
                 self.setVelocity(velocity)
-            printStdOut("Dyno object created successfully.")
+            printStdOut("Dyno object created successfully.",self.__l)
         else:
             printStdOut("There was an error enabling the drive: " + str(rsp))
     
