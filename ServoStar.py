@@ -168,7 +168,12 @@ class dyno:
         rsp = self.__dS.sendReadCommand('v')
         if(rsp == False):
             return False
-        return int(rsp)
+        v = int(rsp)
+        if v <= self.__vlim:
+            return v
+        else:
+            self.killDrive(0)
+            return False
 
     def getCurrent(self):
         """ 
@@ -198,7 +203,12 @@ class dyno:
         rsp = self.getCurrent()
         if(rsp == False):
             return False
-        return float(rsp)/(CURRENT_SCALING_FACTOR*TORQUE_CONSTANT)
+        t = float(rsp)/(CURRENT_SCALING_FACTOR*TORQUE_CONSTANT)
+        if t <= self.__tlim:
+            return t
+        else:
+            self.killDrive(2)
+            return False
 
     def enableDrive(self):
         """ 
@@ -232,6 +242,16 @@ class dyno:
         printStdOut("There was an error disabling the drive.",self.__l)
         return rsp
 
+    def killDrive(self,mode = -1)
+        if mode == 0:
+            printStdOut("Velocity exceeds limit, disabling drive.",self.__l)
+        elif mode == 2:
+            printStdOut("Torque exceeds limit, disabling drive.",self.__l)
+        else:
+            printStdOut("System error, disabling drive.",self.__l)
+        return self.disableDrive
+            
+    
     def __setOpmode(self,mode):
         """ 
             Set operation mode as velocity (0) or torque (2) by calling sendWriteCommand.
@@ -271,19 +291,22 @@ class dyno:
             
         """
         if self.__mode == 0:
-            try:
-                if (float(velocity) >= 0 and float(velocity) <= self.__vlim):
-                    rsp = self.__dS.sendWriteCommand('j=' + str(velocity))
-                    if(rsp == True):
-                        printStdOut("Velocity command sent successfully.",self.__l)
-                        return True
+            if self.getTorque <= self.__tlim:
+                try:
+                    if (float(velocity) >= 0 and float(velocity) <= self.__vlim):
+                        rsp = self.__dS.sendWriteCommand('j=' + str(velocity))
+                        if(rsp == True):
+                            printStdOut("Velocity command sent successfully.",self.__l)
+                            return True
+                        else:
+                            printStdOut("There was an error commanding the specified velocity.",self.__l)
+                            return rsp
                     else:
-                        printStdOut("There was an error commanding the specified velocity.",self.__l)
-                        return rsp
-                else:
-                    printStdOut("Velocity must be between 0 and %d RPM." % (self.__vlim),self.__l)
-            except ValueError:
-                printStdOut("Invalid velocity command.",self.__l)
+                        printStdOut("Velocity must be between 0 and %d RPM." % (self.__vlim),self.__l)
+                except ValueError:
+                    printStdOut("Invalid velocity command.",self.__l)
+            else:
+                self.killDrive(2)
         else:
             printStdOut("Dynamometer is in an unknown mode.",self.__l)
         return False
@@ -305,21 +328,24 @@ class dyno:
         global CURRENT_SCALING_FACTOR
         global TORQUE_CONSTANT
         if self.__mode == 2:
-            try:
-                if(float(torque) >= 0 and float(torque) <= self.__tlim):
-                    # Convert to current as the drive torque command is actually a current command.
-                    i = str(int(round(float(torque)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT,0)))
-                    rsp = self.__dS.sendWriteCommand('t=' + i)
-                    if(rsp == True):
-                        printStdOut("Te: %0.2f Nm" % (torque),self.__l) if not quiet else ''
-                        return True
+            if self.getVelocity() <= self.__vlim:
+                try:
+                    if(float(torque) >= 0 and float(torque) <= self.__tlim):
+                        # Convert to current as the drive torque command is actually a current command.
+                        i = str(int(round(float(torque)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT,0)))
+                        rsp = self.__dS.sendWriteCommand('t=' + i)
+                        if(rsp == True):
+                            printStdOut("Te: %0.2f Nm" % (torque),self.__l) if not quiet else ''
+                            return True
+                        else:
+                            printStdOut("There was an error commanding the specified torque.",self.__l)
+                            return rsp
                     else:
-                        printStdOut("There was an error commanding the specified torque.",self.__l)
-                        return rsp
-                else:
-                    printStdOut("Torque must be between 0 and %0.2f N-m." % (self.__tlim),self.__l)
-            except ValueError:
-                printStdOut("Invalid torque command.",self.__l)
+                        printStdOut("Torque must be between 0 and %0.2f N-m." % (self.__tlim),self.__l)
+                except ValueError:
+                    printStdOut("Invalid torque command.",self.__l)
+            else:
+                self.killDrive(0)
         else:
             printStdOut("Dynamometer is in an unknown mode.",self.__l)
         return False
