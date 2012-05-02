@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.2.7 -- April 27, 2012
+    ServoStar_python  v0.5 -- May 2, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
     
@@ -25,8 +25,6 @@ import math
 
 global quiet
 quiet = False
-global crLast
-crLast = False
 global CURRENT_SCALING_FACTOR
 CURRENT_SCALING_FACTOR = 50 # drive command/amps
 global TORQUE_CONSTANT
@@ -84,9 +82,8 @@ class dyno:
     
     def __init__(self, port = None, baud = None, mode = -1, initial = None, tlim = 6, vlim = 1300, l = None):
         self.__l = l
+        self.__crLast = False
         self.__mode = -1
-        self.__torque = 0
-        self.__velocity = 0
         self.__tlim = tlim
         self.__vlim = vlim
         self.__dS = dynoSerial(port,baud,l)
@@ -94,16 +91,40 @@ class dyno:
             rsp = self.setDynoMode(mode)
             if(rsp == True):
                 if(initial != None and self.__mode == 2):
-                    printStdOut("Commanding initial torque.",self.__l)
+                    self.printStdOut("Commanding initial torque.")
                     self.setTorque(initial)
                 elif(initial != None and self.__mode == 0):
-                    printStdOut("Commanding initial velocity.",self.__l)
+                    self.printStdOut("Commanding initial velocity.")
                     self.setVelocity(initial)
-                printStdOut("Dyno object created successfully.",self.__l)
+                self.printStdOut("Dyno object created successfully.")
             else:
-                printStdOut("There was an error enabling the drive: " + str(rsp),self.__l)
+                self.printStdOut("There was an error enabling the drive: " + str(rsp))
         else:
-            printStdOut("Could not set torque limit, aborting drive enable",self.__l)
+            self.printStdOut("Could not set torque limit, aborting drive enable")
+            
+    def printStdOut(self, msg, cr = False):
+        """
+            Print using StdOut for option of using multiprocessing
+            
+            Arguments:
+            msg -- (required) the message to be printed
+            l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+            cr -- (optional) print a carriage return after the message if True
+            
+        """
+        if self.__l != None:
+            self.__l.acquire()
+        if self.__crLast == True and cr == False:
+            self.__crLast = False
+            sys.stdout.write("\n")
+        if cr == True:
+            self.__crLast = True
+            msg = "\r" + msg
+        sys.stdout.write(msg)
+        if cr == False:
+            sys.stdout.write("\n")
+        if self.__l != None:
+            self.__l.release()
 
     def checkActive(self):
         """ 
@@ -221,9 +242,9 @@ class dyno:
         """
         rsp = self.__dS.sendWriteCommand('en')
         if(rsp == True):
-            printStdOut("Drive enabled successfully.")
+            self.printStdOut("Drive enabled successfully.")
             return True
-        printStdOut("There was an error enabling the drive.",self.__l)
+        self.printStdOut("There was an error enabling the drive.")
         return rsp
 
     def disableDrive(self):
@@ -237,18 +258,18 @@ class dyno:
         """
         rsp = self.__dS.sendWriteCommand('dis')
         if(rsp == True):
-            printStdOut("Drive disabled succesfully.",self.__l)
+            self.printStdOut("Drive disabled succesfully.")
             return True
-        printStdOut("There was an error disabling the drive.",self.__l)
+        self.printStdOut("There was an error disabling the drive.")
         return rsp
 
-    def killDrive(self,mode = -1)
+    def killDrive(self,mode = -1):
         if mode == 0:
-            printStdOut("Velocity exceeds limit, disabling drive.",self.__l)
+            self.printStdOut("Velocity exceeds limit, disabling drive.")
         elif mode == 2:
-            printStdOut("Torque exceeds limit, disabling drive.",self.__l)
+            self.printStdOut("Torque exceeds limit, disabling drive.")
         else:
-            printStdOut("System error, disabling drive.",self.__l)
+            self.printStdOut("System error, disabling drive.")
         return self.disableDrive
             
     
@@ -268,13 +289,13 @@ class dyno:
         if(mode == 0 or mode == 2):
             rsp = self.__dS.sendWriteCommand('opmode=' + str(mode))
             if(rsp == True):
-                printStdOut("Opmode changed successfully.",self.__l)
+                self.printStdOut("Opmode changed successfully.")
                 return True
             else:
-                printStdOut,("There was an error setting the opmode.",self.__l)
+                printStdOut,("There was an error setting the opmode.")
                 return rsp
         elif mode != -1:
-            printStdOut("Valid opmodes are 0 or 2.",self.__l)
+            self.printStdOut("Valid opmodes are 0 or 2.")
         return False
 
     def setVelocity(self,velocity):
@@ -291,24 +312,24 @@ class dyno:
             
         """
         if self.__mode == 0:
-            if self.getTorque <= self.__tlim:
+            if self.getTorque() <= self.__tlim:
                 try:
                     if (float(velocity) >= 0 and float(velocity) <= self.__vlim):
                         rsp = self.__dS.sendWriteCommand('j=' + str(velocity))
                         if(rsp == True):
-                            printStdOut("Velocity command sent successfully.",self.__l)
+                            self.printStdOut("Velocity command sent successfully.")
                             return True
                         else:
-                            printStdOut("There was an error commanding the specified velocity.",self.__l)
+                            self.printStdOut("There was an error commanding the specified velocity.")
                             return rsp
                     else:
-                        printStdOut("Velocity must be between 0 and %d RPM." % (self.__vlim),self.__l)
+                        self.printStdOut("Velocity must be between 0 and %d RPM." % (self.__vlim))
                 except ValueError:
-                    printStdOut("Invalid velocity command.",self.__l)
+                    self.printStdOut("Invalid velocity command.")
             else:
                 self.killDrive(2)
         else:
-            printStdOut("Dynamometer is in an unknown mode.",self.__l)
+            self.printStdOut("Dynamometer is in an unknown mode.")
         return False
 
     def setTorque(self, torque, quiet=False):
@@ -335,19 +356,19 @@ class dyno:
                         i = str(int(round(float(torque)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT,0)))
                         rsp = self.__dS.sendWriteCommand('t=' + i)
                         if(rsp == True):
-                            printStdOut("Te: %0.2f Nm" % (torque),self.__l) if not quiet else ''
+                            self.printStdOut("Te: %0.2f Nm" % (torque)) if not quiet else ''
                             return True
                         else:
-                            printStdOut("There was an error commanding the specified torque.",self.__l)
+                            self.printStdOut("There was an error commanding the specified torque.")
                             return rsp
                     else:
-                        printStdOut("Torque must be between 0 and %0.2f N-m." % (self.__tlim),self.__l)
+                        self.printStdOut("Torque must be between 0 and %0.2f N-m." % (self.__tlim))
                 except ValueError:
-                    printStdOut("Invalid torque command.",self.__l)
+                    self.printStdOut("Invalid torque command.")
             else:
                 self.killDrive(0)
         else:
-            printStdOut("Dynamometer is in an unknown mode.",self.__l)
+            self.printStdOut("Dynamometer is in an unknown mode.")
         return False
 
     def computeLossTorque(self,v):
@@ -395,9 +416,9 @@ class dyno:
         """
         rsp = self.__dS.sendWriteCommand('ilim=' + str(limit))
         if(rsp == True):
-            printStdOut("Current limit successfully set.",self.__l) if not quiet else sys.stdout.write('')
+            self.printStdOut("Current limit successfully set.") if not quiet else sys.stdout.write('')
             return True
-        printStdOut("There was an error setting the current limit.",self.__l) if not quiet else sys.stdout.write('')
+        self.printStdOut("There was an error setting the current limit.") if not quiet else sys.stdout.write('')
         return rsp
 
     def setTorqueLimit(self,limit):
@@ -414,9 +435,9 @@ class dyno:
         """
         rsp = self.setCurrentLimit(int(round(float(limit)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT)),False)
         if(rsp == True):
-            printStdOut("Torque limit successfully set.",self.__l)
+            self.printStdOut("Torque limit successfully set.")
             return True
-        printStdOut("There was an error setting the torque limit.",self.__l)
+        self.printStdOut("There was an error setting the torque limit.")
         return rsp
 
     def killSystem(self,dyno = None,exit = True):
@@ -470,7 +491,7 @@ class dyno:
             # Attempt to enable torque mode.
             rsp = self.__enableTorqueMode()
         else:
-            printStdOut("Invalid mode.",self.__l)
+            self.printStdOut("Invalid mode.")
             return False
         # Look for easily fixable errors.
         if rsp == 5:
@@ -508,12 +529,12 @@ class dyno:
                     time.sleep(0.1)
                     driveok = self.driveOk()
                     if active == True and driveok == True:
-                        printStdOut("The drive should be ready to accept velocity commands.",self.__l)
+                        self.printStdOut("The drive should be ready to accept velocity commands.")
                         self.__mode = 0
                         return True
                     else:
                         rsp = "Active response: " + str(active) + "; Driveok response: " + str(driveok)
-        printStdOut("There was an error enabling velocity mode.",self.__l)
+        self.printStdOut("There was an error enabling velocity mode.")
         return rsp
 
     def __enableTorqueMode(self):
@@ -541,12 +562,12 @@ class dyno:
                     time.sleep(0.1)
                     driveok = self.driveOk()
                     if active == True and driveok == True:
-                        printStdOut("The drive should be ready to accept torque commands.",self.__l)
+                        self.printStdOut("The drive should be ready to accept torque commands.")
                         self.__mode = 2
                         return True
                     else:
                         rsp = "Active response: " + str(active) + "; Driveok response: " + str(driveok)
-        printStdOut("There was an error enabling torque mode.",self.__l)
+        self.printStdOut("There was an error enabling torque mode.")
         return rsp
 
     def testTorqueMode(self, t = None, quiet = False):
@@ -562,14 +583,14 @@ class dyno:
             t = raw_input(" What torque would you like to apply for the test? ")
             t = float(t)
         if t > 1:
-            printStdOut("That seems a little high for a simple test. I recommend using a torque at or below 1 Nm.",self.__l)
+            self.printStdOut("That seems a little high for a simple test. I recommend using a torque at or below 1 Nm.")
             self.testTorqueMode(None,quiet)
         rsp = self.setTorque(t,quiet)
         if rsp == True:
-            printStdOut("Applying test torque for 10 seconds...",self.__l)
+            self.printStdOut("Applying test torque for 10 seconds...")
             time.sleep(10)
             if(self.setTorque(0,quiet) == True):
-                printStdOut("Test completed successfully.",self.__l)
+                self.printStdOut("Test completed successfully.")
 
     def testVelocityMode(self, v = None):
         """
@@ -583,70 +604,14 @@ class dyno:
             v = raw_input(" What velocity would you like to apply for the test? ")
             v = float(v)
         if v > 1000:
-            printStdOut("That seems a little high for a simple test. I recommend using a velocity at or below 1000 rpm.",self.__l)
+            self.printStdOut("That seems a little high for a simple test. I recommend using a velocity at or below 1000 rpm.")
             self.testVelocityMode(None)
         rsp = self.setVelocity(v)
         if rsp == True:
-            printStdOut("Applying test velocity for 10 seconds...",self.__l)
+            printStdOut("Applying test velocity for 10 seconds...")
             time.sleep(10)
             if(self.setVelocity(0) == True):
-                printStdOut("Test completed successfully.",self.__l)
-
-    def checkSpeed(self, t):
-        """
-            Check that the given velocity is valid.
-            
-            Arguments:
-            t -- (reqired) 
-            
-            Returns:
-            v -- the given, valid speed
-            killSystem if high invalid speed given
-            
-        """
-        v = float(getVelocity())
-        if v > CUT_OUT_SPEED:
-            printStdOut("Speed of " + str(v) + " rpm exceeds cut out speed of " + str(CUT_OUT_SPEED) + " rpm.  Killing system.",self.__l)
-            self.killSystem()
-        else:
-            return v
-
-    def startDyno(self, initialTorque = None, vref = None, initialDelay = None, quiet = False):
-        """
-            Attempt to start the dyno with given velocity and torque values.
-            
-            Arguments:
-            initialTorque -- (optional) how much torque to initially apply
-            vref -- (optional) velocity to set dyno to in rpm
-            initialDelay -- (optional) how long to let the drive accelerate in seconds
-            
-        """
-        if vref == None:
-            vref = 1000
-        #initialSpeed = int(raw_input("What velocity in rpm would like to use? "))
-        if vref < 1300:
-            printStdOut("Starting dyno to " + str(vref) + " rpm.",self.__l)
-            if initialTorque == None:
-                t = 0
-            else:
-                t = initialTorque
-                if initialDelay == None:
-                    initialDelay = 15
-                if initialDelay > 0:
-                    self.setTorque(t,quiet)
-                    samplePeriod = 0.2
-                    try:
-                        for i in range(int(initialDelay/samplePeriod)):
-                            v = self.checkSpeed(t)
-                            printStdOut("Letting drive accelerate for %d seconds.  Current speed: %d rpm" % (initialDelay,v),True,self.__l)
-                            time.sleep(samplePeriod)
-                        sys.stdout.write("\n")
-                        return True
-                    except KeyboardInterrupt:
-                        self.killSystem()
-        else:
-            printStdOut("Please choose a speed below 1300 rpm.",self.__l)
-            self.startDyno(initialTorque,vref,initialDelay,quiet)
+                printStdOut("Test completed successfully.")
 
 
 class dynoSerial(serial.Serial):
@@ -677,6 +642,23 @@ class dynoSerial(serial.Serial):
 		serial.Serial.__init__(self,int(port),long(baud),timeout=5)
 		time.sleep(0.5)
         
+    def printStdOut(self, msg, quiet = True):
+        """
+            Print using StdOut for option of using multiprocessing
+            
+            Arguments:
+            msg -- (required) the message to be printed
+            l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
+            cr -- (optional) print a carriage return after the message if True
+            
+        """
+        if self.__l != None:
+            self.__l.acquire()
+        if quiet == False:
+            print msg
+        if self.__l != None:
+            self.__l.release()
+        
     def promptForPort(self):
         """
             Obtain desired port to be used.
@@ -686,13 +668,13 @@ class dynoSerial(serial.Serial):
             port -- the port to be used
             
             """
-        printStdOut("Serial ports available:",self.__l)
+        self.printStdOut("Serial ports available:")
         numPorts = self.scanSerial()
         port = raw_input("Select a serial port number: ")
         if port == "q":
             sys.exit()
         elif (int(port) < 0):
-            printStdOut("Invalid port selected. Try again (or enter q to quit).",self.__l)
+            self.printStdOut("Invalid port selected. Try again (or enter q to quit).")
             return self.promptForPort()
         else:
             port = port.strip()
@@ -712,7 +694,7 @@ class dynoSerial(serial.Serial):
             try:
                 val = winreg.EnumValue(key, i)
                 portName = str(val[1])
-                printStdOut(str(int(portName[-1])-1) + ": " + portName,self.__l)
+                self.printStdOut(str(int(portName[-1])-1) + ": " + portName)
             except EnvironmentError:
                 break
         return i-1
@@ -727,14 +709,14 @@ class dynoSerial(serial.Serial):
             
             """
         availableBaud = ['9600','19200']
-        printStdOut("Baud rates available:",self.__l)
+        self.printStdOut("Baud rates available:")
         for b in availableBaud:
-            printStdOut(b,self.__l)
+            self.printStdOut(b)
         baud = raw_input("Select a baud rate: ")
         if baud == "q":
             sys.exit()
         elif not baud in availableBaud:
-            printStdOut("Inavlid baud rate. Try again (or enter q to quit).",self.__l)
+            self.printStdOut("Inavlid baud rate. Try again (or enter q to quit).")
             return self.promptForBaud()
         else:
             return baud
@@ -748,16 +730,16 @@ class dynoSerial(serial.Serial):
             False -- unable to close serial port or serial connection never opened
             
             """
-        printStdOut("Attempting to disconnect serial connection...",self.__l) 
+        self.printStdOut("Attempting to disconnect serial connection...") 
         try:
             self.close()
             if(self.isOpen()):
-                printStdOut("Unable to close serial port.",self.__l)
+                self.printStdOut("Unable to close serial port.")
             else:
-                printStdOut("Serial closed successfully.",self.__l)
+                self.printStdOut("Serial closed successfully.")
                 return True
         except AttributeError:
-            printStdOut("Serial connection never opened.",self.__l) 
+            self.printStdOut("Serial connection never opened.") 
         return False
 
     def sendWriteCommand(self,command):
@@ -808,11 +790,11 @@ class dynoSerial(serial.Serial):
                                             if(self.read() == '>'):
                                                 return val                                    
                 else:
-                    printStdOut("Read command could not be sent.",self.__l)
+                    self.printStdOut("Read command could not be sent.")
             else:
-                printStdOut("Serial connection not open.",self.__l)
+                self.printStdOut("Serial connection not open.")
         except AttributeError:
-            printStdOut("Serial connection never opened.",self.__l)
+            self.printStdOut("Serial connection never opened.")
         return False
     
     def sendCommand(self,command):
@@ -843,19 +825,19 @@ class dynoSerial(serial.Serial):
                             # Read a byte from the serial port.
                             c = self.read()
                             if(c != char):
-                                printStdOut("Byte received (" + str(ord(c)) + ") does not matc byte sent (" + str(ord(char)) + ")",self.__l)
+                                self.printStdOut("Byte received (" + str(ord(c)) + ") does not matc byte sent (" + str(ord(char)) + ")")
                                 return False
                         except self.SerialException:
-                            printStdOut("Serial exception.",self.__l)
+                            self.printStdOut("Serial exception.")
                             return False
                     else:
-                        printStdOut("Serial port error.",self.__l)
+                        self.printStdOut("Serial port error.")
                         return False
                 return True
             else:
-                printStdOut("Serial connection not open.",self.__l)
+                self.printStdOut("Serial connection not open.")
         except AttributeError:
-            printStdOut("Serial connection never opened.",self.__l)
+            self.printStdOut("Serial connection never opened.")
         return False
 
     def verifyCommand(self):
@@ -892,38 +874,12 @@ class dynoSerial(serial.Serial):
                                         if(self.read() == '-'):
                                             if(self.read() == '>'):
                                                 if val[:3] == 'ERR':
-                                                    printStdOut(val,self.__l)
+                                                    self.printStdOut(val)
                                                     # Return err number if there is an error.
                                                     return int(val[4:6])
                                                 break
             else:
-                printStdOut("Serial connection not open.",self.__l)
+                self.printStdOut("Serial connection not open.")
         except AttributeError:
-            printStdOut("Serial connection never opened.",self.__l)
+            self.printStdOut("Serial connection never opened.")
         return False
-
-
-def printStdOut(msg, l = None, cr = False):
-    """
-        Print using StdOut for option of using multiprocessing
-        
-        Arguments:
-        msg -- (required) the message to be printed
-        l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
-        cr -- (optional) print a carriage return after the message if True
-        
-    """
-    global crLast
-    if l != None:
-        l.acquire()
-    if crLast == True and cr == False:
-        crLast = False
-        sys.stdout.write("\n")
-    if cr == True:
-        crLast = True
-        msg = "\r" + msg
-    sys.stdout.write(msg)
-    if cr == False:
-        sys.stdout.write("\n")
-    if l != None:
-        l.release()
