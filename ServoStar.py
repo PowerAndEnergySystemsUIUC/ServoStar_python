@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.5.1 -- August 17, 2012
+    ServoStar_python  v0.5.2 -- August 17, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
     
@@ -32,10 +32,6 @@ global LINEAR_COEFFICIENT
 LINEAR_COEFFICIENT = 0.0000535541
 global QUADRATIC_COEFFICIENT
 QUADRATIC_COEFFICIENT = -0.0000000074
-global CUT_OUT_SPEED
-CUT_OUT_SPEED = 1350
-global torqueLimit
-torqueLimit = 6
     
 class dyno:
     """
