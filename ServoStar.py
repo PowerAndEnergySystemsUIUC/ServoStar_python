@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.5.3 -- August 17, 2012
+    ServoStar_python  v0.5.4 -- August 17, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
     
@@ -263,6 +263,32 @@ class dyno:
         self.printStdOut("There was an error disabling the drive.",True)
         return rsp
 
+    def forceDisableDrive(self, attempts = -1):
+        """
+            Forces disable of dyno drive.
+            
+            Arguments:
+            attempts -- (optional) number of times to attempt to disable drive
+            
+        """
+        # Attempt to disable drive until successful or attempts is met
+        try:
+       	    # if attempts is not set, try forever
+            if attempts != -1:
+                while self.disableDrive() != True:
+                    time.sleep(0.1)
+                # if while loop has exited the drive has been disabled
+                return True
+            else:
+            	for i in range(0,attemps+1):
+            	    if self.disableDrive():
+            	    	return True
+            	    else:
+            	    	time.sleep(0.1)
+        except KeyboardInterrupt:
+            sys.exit()
+        return False
+
     def killDrive(self,mode = -1):
         if mode == 0:
             self.printStdOut("Velocity exceeds limit, disabling drive.",True)
@@ -270,7 +296,8 @@ class dyno:
             self.printStdOut("Torque exceeds limit, disabling drive.",True)
         else:
             self.printStdOut("System error, disabling drive.",True)
-        return self.disableDrive
+        rsp = self.forceDisableDrive(5)
+        if rsp != False:
             
     
     def __setOpmode(self,mode):
@@ -437,26 +464,6 @@ class dyno:
             return True
         self.printStdOut("There was an error setting the torque limit.",True)
         return rsp
-
-    def killSystem(self,dyno = None,exit = True):
-        """
-            Disable dyno drive.
-            
-            Arguments:
-            dyno -- (optional) dyno object
-            exit -- (optional) option to exit system
-            
-        """
-        if dyno != None and dyno.isOpen():
-            # Attempt to disable drive until successful.
-            try:
-                while self.disableDrive() != True:
-                    time.sleep(0.1)
-            except KeyboardInterrupt:
-                sys.exit()
-            closeSerial()
-        if exit == True:
-            sys.exit()
 
     def setDynoMode(self, mode = -1):
         """
