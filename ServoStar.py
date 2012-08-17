@@ -77,12 +77,13 @@ class dyno:
 #    __l
     
     
-    def __init__(self, port = None, baud = None, mode = -1, initial = None, tlim = 6, vlim = 1300, l = None):
+    def __init__(self, port = None, baud = None, mode = -1, initial = None, tlim = 6, vlim = 1300, quiet = False, l = None):
         self.__l = l
         self.__crLast = False
         self.__mode = -1
         self.__tlim = tlim
         self.__vlim = vlim
+        self.__quiet = quiet
         self.__dS = dynoSerial(port,baud,l)
         if self.setTorqueLimit(tlim):
             rsp = self.setDynoMode(mode)
@@ -98,6 +99,9 @@ class dyno:
                 self.printStdOut("There was an error enabling the drive: " + str(rsp))
         else:
             self.printStdOut("Could not set torque limit, aborting drive enable")
+    
+    def setQuiet(quiet):
+    	self.__quiet = quiet
             
     def printStdOut(self, msg, cr = False):
         """
@@ -109,19 +113,20 @@ class dyno:
             cr -- (optional) print a carriage return after the message if True
             
         """
-        if self.__l != None:
-            self.__l.acquire()
-        if self.__crLast == True and cr == False:
-            self.__crLast = False
-            sys.stdout.write("\n")
-        if cr == True:
-            self.__crLast = True
-            msg = "\r" + msg
-        sys.stdout.write(msg)
-        if cr == False:
-            sys.stdout.write("\n")
-        if self.__l != None:
-            self.__l.release()
+	if self.__quiet == True:
+            if self.__l != None:
+                self.__l.acquire()
+            if self.__crLast == True and cr == False:
+                self.__crLast = False
+                sys.stdout.write("\n")
+            if cr == True:
+                self.__crLast = True
+                msg = "\r" + msg
+            sys.stdout.write(msg)
+            if cr == False:
+                sys.stdout.write("\n")
+            if self.__l != None:
+                self.__l.release()
 
     def checkActive(self):
         """ 
