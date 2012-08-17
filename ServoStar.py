@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.5.4 -- August 17, 2012
+    ServoStar_python  v0.5.5 -- August 17, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
     
@@ -297,7 +297,11 @@ class dyno:
         else:
             self.printStdOut("System error, disabling drive.",True)
         rsp = self.forceDisableDrive(5)
-        if rsp != False:
+        if rsp == True:
+            return mode
+        else:
+            return False
+            
             
     
     def __setOpmode(self,mode):
