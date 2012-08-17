@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.5 -- May 2, 2012
+    ServoStar_python  v0.5.1 -- August 17, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
     
@@ -19,7 +19,6 @@ from datetime import datetime
 import operator
 import itertools
 import _winreg as winreg
-import msvcrt
 import os
 import math
 
