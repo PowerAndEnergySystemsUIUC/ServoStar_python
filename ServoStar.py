@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.5.2 -- August 17, 2012
+    ServoStar_python  v0.5.3 -- August 17, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
     
@@ -100,18 +100,18 @@ class dyno:
     def setQuiet(quiet):
     	self.__quiet = quiet
             
-    def printStdOut(self, msg, error = False, cr = False):
+    def printStdOut(self, msg, force = False, cr = False):
         """
             Print using StdOut for option of using multiprocessing
             
             Arguments:
             msg -- (required) the message to be printed
-            error -- (optional) indicates if the message being printed is the result of an error
+            force -- (optional) forces message to be print if verbose directive is false
             l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
             cr -- (optional) print a carriage return after the message if True
             
         """
-	if self.__quiet == False and (self.__verbose == True or error == True):
+	if self.__quiet == False and (self.__verbose == True or force == True):
             if self.__l != None:
                 self.__l.acquire()
             if self.__crLast == True and cr == False:
