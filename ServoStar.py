@@ -22,8 +22,6 @@ import _winreg as winreg
 import os
 import math
 
-global quiet
-quiet = False
 global CURRENT_SCALING_FACTOR
 CURRENT_SCALING_FACTOR = 50 # drive command/amps
 global TORQUE_CONSTANT
@@ -331,13 +329,12 @@ class dyno:
             self.printStdOut("Dynamometer is in an unknown mode.")
         return False
 
-    def setTorque(self, torque, quiet=False):
+    def setTorque(self, torque):
         """ 
             Set dyno torque by converting to current then calling sendWriteCommand.
             
             Arguments:
             torque -- (required) the desired torque to be set
-            quiet -- (optional) print to StdOut if false
             
             Returns:
             True -- successfully set torque
@@ -355,7 +352,7 @@ class dyno:
                         i = str(int(round(float(torque)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT,0)))
                         rsp = self.__dS.sendWriteCommand('t=' + i)
                         if(rsp == True):
-                            self.printStdOut("Te: %0.2f Nm" % (torque)) if not quiet else ''
+                            self.printStdOut("Te: %0.2f Nm" % (torque))
                             return True
                         else:
                             self.printStdOut("There was an error commanding the specified torque.")
@@ -400,13 +397,12 @@ class dyno:
         global QUADRATIC_COEFFICIENT
         return CONSTANT_COEFFICIENT + v*LINEAR_COEFFICIENT + math.pow(v,2)*QUADRATIC_COEFFICIENT
 
-    def setCurrentLimit(self,limit,quiet = True):
+    def setCurrentLimit(self, limit):
         """
             Send command to dyno to set current limit.
             
             Arguments:
             limit -- (required) desired current limit
-            quiet -- (optional) print to StdOut if false
             
             Returns:
             True -- current limit successfully set
@@ -415,9 +411,9 @@ class dyno:
         """
         rsp = self.__dS.sendWriteCommand('ilim=' + str(limit))
         if(rsp == True):
-            self.printStdOut("Current limit successfully set.") if not quiet else sys.stdout.write('')
+            self.printStdOut("Current limit successfully set.")
             return True
-        self.printStdOut("There was an error setting the current limit.") if not quiet else sys.stdout.write('')
+        self.printStdOut("There was an error setting the current limit.")
         return rsp
 
     def setTorqueLimit(self,limit):
@@ -467,7 +463,6 @@ class dyno:
             torqueLimit -- (optional) maximum torque value
             testTorque -- (optional) whether or not to test the torque
             testVelocity -- (optional) whether or not to test the velocity
-            quiet -- (optional) print to StdOut if false
             
             Returns:
             rsp -- result of trying to enable a dyno mode
@@ -569,13 +564,12 @@ class dyno:
         self.printStdOut("There was an error enabling torque mode.")
         return rsp
 
-    def testTorqueMode(self, t = None, quiet = False):
+    def testTorqueMode(self, t = None):
         """
             Get torque and check if it is valid and does not cause the system to fail.
             
             Arguments:
             t -- (optional) the torque to test
-            quiet -- (optinal) print to StdOut if false
             
         """
         if t == None:
@@ -583,12 +577,12 @@ class dyno:
             t = float(t)
         if t > 1:
             self.printStdOut("That seems a little high for a simple test. I recommend using a torque at or below 1 Nm.")
-            self.testTorqueMode(None,quiet)
-        rsp = self.setTorque(t,quiet)
+            self.testTorqueMode(None)
+        rsp = self.setTorque(t)
         if rsp == True:
             self.printStdOut("Applying test torque for 10 seconds...")
             time.sleep(10)
-            if(self.setTorque(0,quiet) == True):
+            if(self.setTorque(0) == True):
                 self.printStdOut("Test completed successfully.")
 
     def testVelocityMode(self, v = None):
@@ -641,7 +635,7 @@ class dynoSerial(serial.Serial):
 		serial.Serial.__init__(self,int(port),long(baud),timeout=5)
 		time.sleep(0.5)
         
-    def printStdOut(self, msg, quiet = True):
+    def printStdOut(self, msg):
         """
             Print using StdOut for option of using multiprocessing
             
@@ -653,8 +647,7 @@ class dynoSerial(serial.Serial):
         """
         if self.__l != None:
             self.__l.acquire()
-        if quiet == False:
-            print msg
+        print msg
         if self.__l != None:
             self.__l.release()
         
