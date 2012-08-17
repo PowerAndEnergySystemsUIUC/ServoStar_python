@@ -73,13 +73,14 @@ class dyno:
 #    __l
     
     
-    def __init__(self, port = None, baud = None, mode = -1, initial = None, tlim = 6, vlim = 1300, quiet = False, l = None):
+    def __init__(self, port = None, baud = None, mode = -1, initial = None, tlim = 6, vlim = 1300, quiet = False, verbose = False, l = None):
         self.__l = l
         self.__crLast = False
         self.__mode = -1
         self.__tlim = tlim
         self.__vlim = vlim
-        self.__quiet = quiet
+        self.__quiet = quiet		# allows/disallows anything printing to standard out
+        self.__verbose = verbose	# limits print to standard out to only errors
         self.__dS = dynoSerial(port,baud,l)
         if self.setTorqueLimit(tlim):
             rsp = self.setDynoMode(mode)
@@ -92,24 +93,25 @@ class dyno:
                     self.setVelocity(initial)
                 self.printStdOut("Dyno object created successfully.")
             else:
-                self.printStdOut("There was an error enabling the drive: " + str(rsp))
+                self.printStdOut("There was an error enabling the drive: " + str(rsp),True)
         else:
-            self.printStdOut("Could not set torque limit, aborting drive enable")
+            self.printStdOut("Could not set torque limit, aborting drive enable",True)
     
     def setQuiet(quiet):
     	self.__quiet = quiet
             
-    def printStdOut(self, msg, cr = False):
+    def printStdOut(self, msg, error = False, cr = False):
         """
             Print using StdOut for option of using multiprocessing
             
             Arguments:
             msg -- (required) the message to be printed
+            error -- (optional) indicates if the message being printed is the result of an error
             l -- (optional) lock object to synchronize printing to StdOut when using multiprocessing
             cr -- (optional) print a carriage return after the message if True
             
         """
-	if self.__quiet == True:
+	if self.__quiet == False and (self.__verbose == True or error == True):
             if self.__l != None:
                 self.__l.acquire()
             if self.__crLast == True and cr == False:
@@ -242,7 +244,7 @@ class dyno:
         if(rsp == True):
             self.printStdOut("Drive enabled successfully.")
             return True
-        self.printStdOut("There was an error enabling the drive.")
+        self.printStdOut("There was an error enabling the drive.",True)
         return rsp
 
     def disableDrive(self):
@@ -258,16 +260,16 @@ class dyno:
         if(rsp == True):
             self.printStdOut("Drive disabled succesfully.")
             return True
-        self.printStdOut("There was an error disabling the drive.")
+        self.printStdOut("There was an error disabling the drive.",True)
         return rsp
 
     def killDrive(self,mode = -1):
         if mode == 0:
-            self.printStdOut("Velocity exceeds limit, disabling drive.")
+            self.printStdOut("Velocity exceeds limit, disabling drive.",True)
         elif mode == 2:
-            self.printStdOut("Torque exceeds limit, disabling drive.")
+            self.printStdOut("Torque exceeds limit, disabling drive.",True)
         else:
-            self.printStdOut("System error, disabling drive.")
+            self.printStdOut("System error, disabling drive.",True)
         return self.disableDrive
             
     
@@ -290,10 +292,10 @@ class dyno:
                 self.printStdOut("Opmode changed successfully.")
                 return True
             else:
-                printStdOut,("There was an error setting the opmode.")
+                printStdOut,("There was an error setting the opmode.",True)
                 return rsp
         elif mode != -1:
-            self.printStdOut("Valid opmodes are 0 or 2.")
+            self.printStdOut("Valid opmodes are 0 or 2.",True)
         return False
 
     def setVelocity(self,velocity):
@@ -318,16 +320,16 @@ class dyno:
                             self.printStdOut("Velocity command sent successfully.")
                             return True
                         else:
-                            self.printStdOut("There was an error commanding the specified velocity.")
+                            self.printStdOut("There was an error commanding the specified velocity.",True)
                             return rsp
                     else:
-                        self.printStdOut("Velocity must be between 0 and %d RPM." % (self.__vlim))
+                        self.printStdOut("Velocity must be between 0 and %d RPM." % (self.__vlim),True)
                 except ValueError:
-                    self.printStdOut("Invalid velocity command.")
+                    self.printStdOut("Invalid velocity command.",True)
             else:
                 self.killDrive(2)
         else:
-            self.printStdOut("Dynamometer is in an unknown mode.")
+            self.printStdOut("Dynamometer is in an unknown mode.",True)
         return False
 
     def setTorque(self, torque):
@@ -356,16 +358,16 @@ class dyno:
                             self.printStdOut("Te: %0.2f Nm" % (torque))
                             return True
                         else:
-                            self.printStdOut("There was an error commanding the specified torque.")
+                            self.printStdOut("There was an error commanding the specified torque.",True)
                             return rsp
                     else:
-                        self.printStdOut("Torque must be between 0 and %0.2f N-m." % (self.__tlim))
+                        self.printStdOut("Torque must be between 0 and %0.2f N-m." % (self.__tlim),True)
                 except ValueError:
-                    self.printStdOut("Invalid torque command.")
+                    self.printStdOut("Invalid torque command.",True)
             else:
                 self.killDrive(0)
         else:
-            self.printStdOut("Dynamometer is in an unknown mode.")
+            self.printStdOut("Dynamometer is in an unknown mode.",True)
         return False
 
     def computeLossTorque(self,v):
@@ -414,7 +416,7 @@ class dyno:
         if(rsp == True):
             self.printStdOut("Current limit successfully set.")
             return True
-        self.printStdOut("There was an error setting the current limit.")
+        self.printStdOut("There was an error setting the current limit.",True)
         return rsp
 
     def setTorqueLimit(self,limit):
@@ -433,7 +435,7 @@ class dyno:
         if(rsp == True):
             self.printStdOut("Torque limit successfully set.")
             return True
-        self.printStdOut("There was an error setting the torque limit.")
+        self.printStdOut("There was an error setting the torque limit.",True)
         return rsp
 
     def killSystem(self,dyno = None,exit = True):
@@ -486,7 +488,7 @@ class dyno:
             # Attempt to enable torque mode.
             rsp = self.__enableTorqueMode()
         else:
-            self.printStdOut("Invalid mode.")
+            self.printStdOut("Invalid mode.",True)
             return False
         # Look for easily fixable errors.
         if rsp == 5:
@@ -529,7 +531,7 @@ class dyno:
                         return True
                     else:
                         rsp = "Active response: " + str(active) + "; Driveok response: " + str(driveok)
-        self.printStdOut("There was an error enabling velocity mode.")
+        self.printStdOut("There was an error enabling velocity mode.",True)
         return rsp
 
     def __enableTorqueMode(self):
@@ -562,7 +564,7 @@ class dyno:
                         return True
                     else:
                         rsp = "Active response: " + str(active) + "; Driveok response: " + str(driveok)
-        self.printStdOut("There was an error enabling torque mode.")
+        self.printStdOut("There was an error enabling torque mode.",True)
         return rsp
 
     def testTorqueMode(self, t = None):
