@@ -462,7 +462,7 @@ class dyno:
             rsp -- call to setCurrentLimit was unsuccessful
             
         """
-        rsp = self.setCurrentLimit(int(round(float(limit)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT)),False)
+        rsp = self.setCurrentLimit(int(round(float(limit)*CURRENT_SCALING_FACTOR*TORQUE_CONSTANT)))
         if(rsp == True):
             self.printStdOut("Torque limit successfully set.")
             return True
