@@ -2,7 +2,7 @@
     Copyright 2012 Stanton T. Cady
     Copyright 2012 Hannah Hasken
     
-    ServoStar_python  v0.5.5 -- August 17, 2012
+    ServoStar_python  v0.5.6 -- August 30, 2012
     
     This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
     
@@ -60,8 +60,6 @@ class dyno:
         __enableTorqueMode
         testTorqueMode
         testVelocityMode
-        checkSpeed
-        startDyno
         printStdOut
         
     """
