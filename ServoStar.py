@@ -33,7 +33,7 @@ LINEAR_COEFFICIENT = 0.0000535541
 global QUADRATIC_COEFFICIENT
 QUADRATIC_COEFFICIENT = -0.0000000074
     
-class dyno:
+class ServoDrive:
     """
         The dyno.
         
@@ -79,7 +79,7 @@ class dyno:
         self.__vlim = vlim
         self.__quiet = quiet		# allows/disallows anything printing to standard out
         self.__verbose = verbose	# limits print to standard out to only errors
-        self.__dS = dynoSerial(port,baud,l)
+        self.__dS = ServoDriveSerial(port,baud,l)
         if self.setTorqueLimit(tlim):
             rsp = self.setDynoMode(mode)
             if(rsp == True):
@@ -619,7 +619,7 @@ class dyno:
                 printStdOut("Test completed successfully.")
 
 
-class dynoSerial(serial.Serial):
+class ServoDriveSerial(serial.Serial):
     """
         The serial connection.
         
